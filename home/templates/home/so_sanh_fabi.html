@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}So Sánh Fabi - Quản Lý Tồn Kho{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">So Sánh Fabi</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">So Sánh Nguyên Liệu Xuất Theo Fabi</h5>
+        <form method="get" class="mb-3">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Tên Nguyên Liệu</label>
+                    <input type="text" name="ten_hang_hoa" class="form-control" value="{{ ten_hang_hoa|default:'' }}" placeholder="Nhập tên nguyên liệu">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Từ ngày</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Đến ngày</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-12 mb-3 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary me-2"><i class="fas fa-filter me-2"></i>Lọc</button>
+                    <a href="{% url 'so_sanh_fabi' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Xóa Bộ Lọc</a>
+                </div>
+            </div>
+        </form>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Tên Hàng Hóa</th>
+                    <th>Nguyên Liệu Xuất (Fabi)</th>
+                    <th>Lượng Dùng Thực Tế</th>
+                    <th>Chênh Lệch</th>
+                    <th>Ngày</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in so_sanh_list %}
+                <tr>
+                    <td>{{ item.hang_hoa.ten_hang_hoa }}</td>
+                    <td>{{ item.nguyen_lieu_da_xuat|floatformat:2 }}</td>
+                    <td>{{ item.so_luong_ton|floatformat:2 }}</td>
+                    <td>{{ item.chenh_lech|floatformat:2 }}</td>
+                    <td>{{ item.ngay_xuat|date:'d/m/Y' }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">Chưa có dữ liệu so sánh. Vui lòng kiểm tra dữ liệu hoặc điều chỉnh bộ lọc.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Biểu đồ Chênh Lệch</h5>
+        <canvas id="chenhLechChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Truyền dữ liệu từ so_sanh_list sang JavaScript -->
+<script type="application/json" id="chart-labels">
+    [{% for item in so_sanh_list %}{ "hang_hoa": { "ten_hang_hoa": "{{ item.hang_hoa.ten_hang_hoa|escapejs }}" }, "ngay_xuat": "{{ item.ngay_xuat|date:'d/m/Y' }}" }{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+<script type="application/json" id="chart-data">
+    [{% for item in so_sanh_list %}{ "chenh_lech": {{ item.chenh_lech|default:0|floatformat:2 }} }{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Lấy dữ liệu từ thẻ script
+    const labelsElement = document.getElementById('chart-labels');
+    const dataElement = document.getElementById('chart-data');
+
+    // Chuyển đổi dữ liệu JSON thành mảng JavaScript
+    const chartLabels = labelsElement ? JSON.parse(labelsElement.textContent).map(item => `${item.hang_hoa.ten_hang_hoa} (${item.ngay_xuat})`) : [];
+    const chartData = dataElement ? JSON.parse(dataElement.textContent).map(item => parseFloat(item.chenh_lech) || 0) : [];
+
+    // Khởi tạo biểu đồ
+    const ctx = document.getElementById('chenhLechChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'Chênh Lệch (Lượng Dùng Thực Tế - Xuất Fabi)',
+                data: chartData,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true }
+            },
+            plugins: {
+                legend: { display: true },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Chênh lệch: ${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

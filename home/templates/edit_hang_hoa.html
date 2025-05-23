@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Chỉnh Sửa Hàng Hóa{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Chỉnh Sửa Hàng Hóa</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Thông Tin Hàng Hóa</h5>
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.ten_hang_hoa.label }}</label>
+                    {{ form.ten_hang_hoa }}
+                    {% if form.ten_hang_hoa.errors %}
+                        <div class="text-danger">{{ form.ten_hang_hoa.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.don_vi_hang_hoa.label }}</label>
+                    {{ form.don_vi_hang_hoa }}
+                    {% if form.don_vi_hang_hoa.errors %}
+                        <div class="text-danger">{{ form.don_vi_hang_hoa.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.don_vi_nguyen_lieu.label }}</label>
+                    {{ form.don_vi_nguyen_lieu }}
+                    {% if form.don_vi_nguyen_lieu.errors %}
+                        <div class="text-danger">{{ form.don_vi_nguyen_lieu.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.dinh_luong.label }}</label>
+                    {{ form.dinh_luong }}
+                    {% if form.dinh_luong.errors %}
+                        <div class="text-danger">{{ form.dinh_luong.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Lưu</button>
+            <a href="{% url 'homepage' %}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Quay Lại</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

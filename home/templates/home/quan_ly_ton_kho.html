@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Tồn Kho - Quản Lý Tồn Kho</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f5f7fa; }
+        .navbar-brand img { height: 40px; }
+        .sidebar { min-height: 100vh; background-color: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+        .sidebar .nav-link { color: #333; padding: 10px 15px; border-radius: 5px; margin: 5px 10px; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #007bff; color: white; }
+        .main-content { padding: 20px; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-label { font-weight: 500; }
+        .alert-dismissible { margin-bottom: 20px; }
+        .table { background-color: white; border-radius: 10px; overflow: hidden; }
+        .table th { background-color: #f8f9fa; }
+        .pagination { justify-content: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'homepage' %}">
+                <img src="https://via.placeholder.com/40" alt="Logo"> Quản Lý Tồn Kho
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'homepage' %}"><i class="fas fa-home"></i> Trang Chủ</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'quan_ly_ton_kho' %}"><i class="fas fa-warehouse"></i> Quản Lý Tồn Kho</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'xuat_theo_mon' %}"><i class="fas fa-utensils"></i> Xuất Theo Món</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'so_sanh_fabi' %}"><i class="fas fa-balance-scale"></i> So Sánh Fabi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'quan_ly_hang_hoa' %}"><i class="fas fa-boxes"></i> Quản Lý Hàng Hóa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/"><i class="fas fa-user-shield"></i> Admin</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="d-flex">
+        <div class="sidebar d-none d-md-block col-md-2">
+            <ul class="nav flex-column mt-3">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'homepage' %}"><i class="fas fa-tachometer-alt me-2"></i> Bảng Điều Khiển</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'quan_ly_hang_hoa' %}"><i class="fas fa-boxes me-2"></i> Quản Lý Hàng Hóa</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'quan_ly_ton_kho' %}"><i class="fas fa-warehouse me-2"></i> Quản Lý Tồn Kho</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'xuat_theo_mon' %}"><i class="fas fa-utensils me-2"></i> Xuất Theo Món</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'so_sanh_fabi' %}"><i class="fas fa-balance-scale me-2"></i> So Sánh Fabi</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="main-content col-md-10 col-12">
+            <div class="container-fluid">
+                <h1 class="mb-4">Quản Lý Tồn Kho Hàng Hóa</h1>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Lọc Tồn Kho Theo Ngày</h5>
+                        <form method="get">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">{{ filter_form.ngay_bat_dau.label }}</label>
+                                    {{ filter_form.ngay_bat_dau }}
+                                    {% if filter_form.ngay_bat_dau.errors %}
+                                        <div class="text-danger">{{ filter_form.ngay_bat_dau.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">{{ filter_form.ngay_ket_thuc.label }}</label>
+                                    {{ filter_form.ngay_ket_thuc }}
+                                    {% if filter_form.ngay_ket_thuc.errors %}
+                                        <div class="text-danger">{{ filter_form.ngay_ket_thuc.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 mb-3 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
+                                    <a href="{% url 'quan_ly_ton_kho' %}" class="btn btn-outline-secondary ms-2"><i class="fas fa-undo me-2"></i>Xóa Lọc</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Thêm Tồn Kho Hàng Hóa</h5>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">{{ form.hang_hoa.label }}</label>
+                                    <select name="hang_hoa" class="form-control" id="id_hang_hoa">
+                                        <option value="" {% if not form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
+                                        {% for hang_hoa in form.hang_hoa.field.queryset %}
+                                            <option value="{{ hang_hoa.id }}"
+                                                    data-don-vi="{{ hang_hoa.don_vi_hang_hoa }}"
+                                                    data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
+                                                    {% if form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
+                                                {{ hang_hoa.ten_hang_hoa }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if form.hang_hoa.errors %}
+                                        <div class="text-danger">{{ form.hang_hoa.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Đơn vị hàng hóa</label>
+                                    <input type="text" id="don_vi_hang_hoa_display" class="form-control" readonly>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">{{ form.ngay_ton.label }}</label>
+                                    {{ form.ngay_ton }}
+                                    {% if form.ngay_ton.errors %}
+                                        <div class="text-danger">{{ form.ngay_ton.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">{{ form.ton_dau_ngay.label }}</label>
+                                    {{ form.ton_dau_ngay }}
+                                    {% if form.ton_dau_ngay.errors %}
+                                        <div class="text-danger">{{ form.ton_dau_ngay.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">{{ form.ton_cuoi_ngay.label }}</label>
+                                    {{ form.ton_cuoi_ngay }}
+                                    {% if form.ton_cuoi_ngay.errors %}
+                                        <div class="text-danger">{{ form.ton_cuoi_ngay.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-warehouse me-2"></i>Thêm Tồn Kho</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Nhập Tồn Kho Từ File Excel</h5>
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="excel_import">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ import_form.excel_file.label }}</label>
+                                    {{ import_form.excel_file }}
+                                    {% if import_form.excel_file.errors %}
+                                        <div class="text-danger">{{ import_form.excel_file.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel me-2"></i>Nhập Từ Excel</button>
+                                </div>
+                            </div>
+                            <small class="text-muted">File Excel cần có các cột: Tên Hàng Hóa, Ngày Tồn (YYYY-MM-DD), Tồn Đầu Ngày, Tồn Cuối Ngày.</small>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Danh Sách Tồn Kho Hàng Hóa</h5>
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tên Hàng Hóa</th>
+                                    <th>Tồn Đầu Ngày</th>
+                                    <th>Tồn Cuối Ngày</th>
+                                    <th>Đơn Vị</th>
+                                    <th>Ngày Tồn</th>
+                                    <th>Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ton in page_obj %}
+                                <tr>
+                                    <td>{{ ton.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
+                                    <td>{{ ton.ton_dau_ngay|floatformat:2 }}</td>
+                                    <td>{{ ton.ton_cuoi_ngay|floatformat:2 }}</td>
+                                    <td>{{ ton.hang_hoa.don_vi_hang_hoa|default:"Không xác định" }}</td>
+                                    <td>{{ ton.ngay_ton }}</td>
+                                    <td>
+                                        <a href="{% url 'edit_ton_kho_hang_hoa' ton.id %}?next={% url 'quan_ly_ton_kho' %}" class="btn btn-sm btn-outline-warning">
+                                            <i class="fas fa-edit me-1"></i> Sửa
+                                        </a>
+                                        <form action="{% url 'delete_ton_kho_hang_hoa' ton.id %}" method="post" style="display:inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{% url 'quan_ly_ton_kho' %}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa?')">
+                                                <i class="fas fa-trash me-1"></i> Xóa
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">Chưa có dữ liệu tồn kho</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                        {% if page_obj.has_other_pages %}
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.ngay_bat_dau %}&ngay_bat_dau={{ request.GET.ngay_bat_dau }}{% endif %}{% if request.GET.ngay_ket_thuc %}&ngay_ket_thuc={{ request.GET.ngay_ket_thuc }}{% endif %}" aria-label="Previous">
+                                            <span aria-hidden="true">«</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                    {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ num }}{% if request.GET.ngay_bat_dau %}&ngay_bat_dau={{ request.GET.ngay_bat_dau }}{% endif %}{% if request.GET.ngay_ket_thuc %}&ngay_ket_thuc={{ request.GET.ngay_ket_thuc }}{% endif %}">{{ num }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.ngay_bat_dau %}&ngay_bat_dau={{ request.GET.ngay_bat_dau }}{% endif %}{% if request.GET.ngay_ket_thuc %}&ngay_ket_thuc={{ request.GET.ngay_ket_thuc }}{% endif %}" aria-label="Next">
+                                            <span aria-hidden="true">»</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const hangHoaSelect = document.querySelector('select[name="hang_hoa"]');
+            const donViHangHoaDisplay = document.getElementById('don_vi_hang_hoa_display');
+
+            if (hangHoaSelect) {
+                hangHoaSelect.addEventListener('change', function () {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const donViHangHoa = selectedOption.getAttribute('data-don-vi') || '';
+                    if (donViHangHoaDisplay) {
+                        donViHangHoaDisplay.value = donViHangHoa;
+                    }
+                });
+
+                if (hangHoaSelect.value) {
+                    const defaultOption = hangHoaSelect.querySelector(`option[value="${hangHoaSelect.value}"]`);
+                    if (defaultOption) {
+                        const defaultDonViHangHoa = defaultOption.getAttribute('data-don-vi') || '';
+                        if (donViHangHoaDisplay) {
+                            donViHangHoaDisplay.value = defaultDonViHangHoa;
+                        }
+                    }
+                }
+            }
+
+            document.querySelector('form:not([name="excel_import"])').addEventListener('submit', function (e) {
+                if (!this.querySelector('input[name="excel_import"]') && !confirm('Bạn có chắc muốn thêm tồn kho này?')) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

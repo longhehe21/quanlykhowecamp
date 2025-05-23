@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}Xuất Theo Món - Quản Lý Tồn Kho{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Xuất Theo Món</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Form thêm công thức món -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Thêm Công Thức Món</h5>
+        <form method="post" id="cong_thuc_form" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="cong_thuc_mon_form">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ cong_thuc_form.ten_mon.label }}</label>
+                    {{ cong_thuc_form.ten_mon }}
+                </div>
+            </div>
+            <div id="nguyen_lieu_container">
+                <div class="row nguyen_lieu_row" data-index="0">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ chi_tiet_form.hang_hoa.label }}</label>
+                        <select name="hang_hoa_0" class="form-control hang-hoa-select" onchange="updateDonVi(this)">
+                            <option value="">--- Chọn nguyên liệu ---</option>
+                            {% for hh in hang_hoa_list %}
+                                <option value="{{ hh.pk }}" data-don-vi="{{ hh.don_vi_nguyen_lieu }}">{{ hh.ten_hang_hoa }}</option>
+                            {% empty %}
+                                <option value="" disabled>Không có nguyên liệu nào</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Đơn vị nguyên liệu</label>
+                        <input type="text" class="form-control don_vi_nguyen_lieu" readonly>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ chi_tiet_form.dinh_luong.label }}</label>
+                        <input type="number" name="dinh_luong_0" step="0.01" class="form-control" placeholder="Ví dụ: 0.5">
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-outline-primary mb-3" onclick="addNguyenLieuRow()"><i class="fas fa-plus me-2"></i>Thêm nguyên liệu</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Lưu Công Thức</button>
+        </form>
+    </div>
+</div>
+
+<!-- Form nhập công thức món từ Excel -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Nhập Công Thức Món hoặc Xuất Món từ File Excel</h5>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Chọn file Excel</label>
+                    <input type="file" name="excel_file" class="form-control" accept=".xlsx, .xls" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Loại dữ liệu nhập</label>
+                    <select name="import_type" class="form-control" required>
+                        <option value="cong_thuc_mon">Công thức món</option>
+                        <option value="xuat_mon_fabi">Xuất món theo Fabi</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success"><i class="fas fa-upload me-2"></i>Nhập từ Excel</button>
+        </form>
+    </div>
+</div>
+
+<!-- Danh sách công thức món -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Danh Sách Công Thức Món</h5>
+            <form action="{% url 'delete_all_cong_thuc' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả công thức món?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
+            </form>
+        </div>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Tên Công Thức</th>
+                    <th>Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cong_thuc in cong_thuc_list %}
+                <tr>
+                    <td>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#chiTietCongThucModal{{ cong_thuc.id }}">{{ cong_thuc.ten_mon }}</a>
+                    </td>
+                    <td>
+                        <form action="{% url 'delete_cong_thuc' cong_thuc.id %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa công thức này?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-trash me-1"></i> Xóa
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" class="text-center">Chưa có công thức món nào</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal chi tiết công thức -->
+{% for cong_thuc in cong_thuc_list %}
+<div class="modal fade" id="chiTietCongThucModal{{ cong_thuc.id }}" tabindex="-1" aria-labelledby="chiTietCongThucModalLabel{{ cong_thuc.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chiTietCongThucModalLabel{{ cong_thuc.id }}">Chi Tiết Công Thức: {{ cong_thuc.ten_mon }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Tên món:</strong> {{ cong_thuc.ten_mon }}</p>
+                <h6>Danh sách nguyên liệu:</h6>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Tên nguyên liệu</th>
+                            <th>Đơn vị</th>
+                            <th>Định lượng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for chi_tiet in cong_thuc.chitietcongthucmon_set.all %}
+                        <tr>
+                            <td>{{ chi_tiet.hang_hoa.ten_hang_hoa }}</td>
+                            <td>{{ chi_tiet.hang_hoa.don_vi_nguyen_lieu }}</td>
+                            <td>{{ chi_tiet.dinh_luong }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">Chưa có nguyên liệu nào</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Form xuất món theo Fabi -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Xuất Món Theo Fabi</h5>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="xuat_mon_fabi_form">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ xuat_mon_form.ngay_xuat.label }}</label>
+                    {{ xuat_mon_form.ngay_xuat }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ xuat_mon_form.ten_mon.label }}</label>
+                    {{ xuat_mon_form.ten_mon }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ xuat_mon_form.so_luong.label }}</label>
+                    {{ xuat_mon_form.so_luong }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-utensils me-2"></i>Thêm Xuất Món</button>
+        </form>
+    </div>
+</div>
+
+<!-- Danh sách xuất món theo Fabi -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Danh Sách Xuất Món Theo Fabi</h5>
+            <form action="{% url 'delete_all_xuat_mon' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi xuất món?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
+            </form>
+        </div>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Ngày Xuất</th>
+                    <th>Tên Món</th>
+                    <th>Số Lượng</th>
+                    <th>Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for xuat in xuat_mon_list %}
+                <tr>
+                    <td>{{ xuat.ngay_xuat }}</td>
+                    <td>{{ xuat.ten_mon.ten_mon }}</td>
+                    <td>{{ xuat.so_luong }}</td>
+                    <td>
+                        <form action="{% url 'delete_xuat_mon' xuat.id %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa bản ghi xuất món này?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-trash me-1"></i> Xóa
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center">Chưa có bản ghi xuất món</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Lọc theo ngày xuất -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Lọc Theo Ngày Xuất</h5>
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="date_from" class="form-label">Từ Ngày:</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ request.GET.date_from|default_if_none:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label for="date_to" class="form-label">Đến Ngày:</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ request.GET.date_to|default_if_none:'' }}">
+            </div>
+            <div class="col-md-4 align-self-end">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
+                <a href="{% url 'xuat_theo_mon' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Xóa Bộ Lọc</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tổng hợp xuất nguyên liệu -->
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Tổng Hợp Xuất Nguyên Liệu</h5>
+            <form action="{% url 'delete_all_tong_hop' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi tổng hợp xuất nguyên liệu?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
+            </form>
+        </div>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Tên Món</th>
+                    <th>Tên Nguyên Liệu</th>
+                    <th>Đơn Vị Nguyên Liệu</th>
+                    <th>Định Lượng</th>
+                    <th>Số Món Xuất</th>
+                    <th>Nguyên Liệu Đã Xuất</th>
+                    <th>Ngày Xuất</th>
+                    <th>Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tong_hop in tong_hop_list %}
+                <tr>
+                    <td>{{ tong_hop.cong_thuc_mon.ten_mon }}</td>
+                    <td>{{ tong_hop.hang_hoa.ten_hang_hoa }}</td>
+                    <td>{{ tong_hop.hang_hoa.don_vi_nguyen_lieu }}</td>
+                    <td>{{ tong_hop.dinh_luong }}</td>
+                    <td>{{ tong_hop.so_mon_xuat }}</td>
+                    <td>{{ tong_hop.nguyen_lieu_da_xuat }}</td>
+                    <td>{{ tong_hop.ngay_xuat }}</td>
+                    <td>
+                        <form action="{% url 'delete_tong_hop' tong_hop.id %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa bản ghi tổng hợp này?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-trash me-1"></i> Xóa
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center">Chưa có bản ghi tổng hợp</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="text/javascript">
+    let hangHoaList = [];
+    let rowIndex = 0;
+
+    try {
+        const rawJson = '{{ hang_hoa_list_json|safe }}';
+        if (!rawJson || rawJson.trim() === '') {
+            throw new Error("hang_hoa_list_json is empty or undefined");
+        }
+        console.log("Raw JSON:", rawJson);
+        hangHoaList = JSON.parse(rawJson);
+        console.log("Parsed hangHoaList:", hangHoaList);
+    } catch (e) {
+        console.error("Lỗi khi parse hang_hoa_list_json:", e.message);
+        const defaultSelect = document.querySelector('select.hang-hoa-select');
+        if (defaultSelect) {
+            hangHoaList = Array.from(defaultSelect.options)
+                .filter(option => option.value !== '')
+                .map(option => ({
+                    pk: option.value,
+                    ten_hang_hoa: option.textContent,
+                    don_vi_nguyen_lieu: option.getAttribute('data-don-vi') || ''
+                }));
+        }
+        console.log("Fallback hangHoaList:", hangHoaList);
+    }
+
+    console.log("Final hangHoaList:", hangHoaList);
+
+    function addNguyenLieuRow() {
+        console.log("addNguyenLieuRow được gọi");
+
+        const container = document.getElementById('nguyen_lieu_container');
+        if (!container) {
+            console.error("Không tìm thấy nguyen_lieu_container");
+            return;
+        }
+
+        rowIndex++;
+        const newRow = document.createElement('div');
+        newRow.className = 'row nguyen_lieu_row';
+        newRow.setAttribute('data-index', rowIndex);
+
+        let optionsHTML = '<option value="">--- Chọn nguyên liệu ---</option>';
+        if (hangHoaList && hangHoaList.length > 0) {
+            hangHoaList.forEach(hh => {
+                const donVi = hh.don_vi_nguyen_lieu || '';
+                const tenHangHoa = hh.ten_hang_hoa || 'Không xác định';
+                const pk = hh.pk || '';
+                optionsHTML += `<option value="${pk}" data-don-vi="${donVi}">${tenHangHoa}</option>`;
+            });
+        } else {
+            optionsHTML += '<option value="" disabled>Không có nguyên liệu nào</option>';
+        }
+
+        newRow.innerHTML = `
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Nguyên liệu</label>
+                <select name="hang_hoa_${rowIndex}" class="form-control hang-hoa-select" onchange="updateDonVi(this)">
+                    ${optionsHTML}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Đơn vị nguyên liệu</label>
+                <input type="text" class="form-control don_vi_nguyen_lieu" readonly>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Định lượng</label>
+                <input type="number" name="dinh_luong_${rowIndex}" step="0.01" class="form-control" placeholder="Ví dụ: 0.5">
+            </div>
+        `;
+        container.appendChild(newRow);
+
+        const newSelect = newRow.querySelector('select.hang-hoa-select');
+        if (newSelect) {
+            updateDonVi(newSelect);
+        }
+    }
+
+    function updateDonVi(select) {
+        const row = select.closest('.nguyen_lieu_row');
+        const donViInput = row.querySelector('.don_vi_nguyen_lieu');
+        if (!donViInput) {
+            console.error('Không tìm thấy input đơn vị nguyên liệu');
+            return;
+        }
+        const selectedOption = select.options[select.selectedIndex];
+        const donVi = selectedOption ? selectedOption.getAttribute('data-don-vi') : '';
+        donViInput.value = donVi || '';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const selects = document.querySelectorAll('select.hang-hoa-select');
+        selects.forEach(select => updateDonVi(select));
+    });
+</script>
+{% endblock %}
