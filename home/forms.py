@@ -1,5 +1,5 @@
 from django import forms
-from .models import HangHoa, NhapHangHoa, TonKhoHangHoa, CongThucMon, ChiTietCongThucMon, XuatMonTheoFabi
+from .models import HangHoa, NhapHangHoa, TonKhoHangHoa, CongThucMon, ChiTietCongThucMon, XuatMonTheoFabi, TonKhoLeTan
 
 class HangHoaForm(forms.ModelForm):
     class Meta:
@@ -67,7 +67,16 @@ class TonKhoHangHoaImportForm(forms.Form):
     excel_file = forms.FileField(
         label='File Excel',
         widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx'}),
-        help_text='File Excel phải có các cột: "Tên Hàng Hóa", "Ngày Tồn", "Tồn Cuối Ngày".'
+        help_text='File Excel phải có các cột phù hợp với loại dữ liệu nhập.'
+    )
+    import_type = forms.ChoiceField(
+        choices=[
+            ('ton_kho', 'Tồn kho hàng hóa'),
+            ('nhap_hang_hoa', 'Nhập hàng hóa'),
+            ('ton_kho_le_tan', 'Tồn kho lễ tân')
+        ],
+        label='Loại dữ liệu nhập',
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
 
 class TonKhoHangHoaFilterForm(forms.Form):
@@ -130,3 +139,17 @@ class XuatMonTheoFabiForm(forms.ModelForm):
             'don_vi_tinh': forms.TextInput(attrs={'placeholder': 'Ví dụ: Suất', 'class': 'form-control'}),
             'so_luong': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
         }
+class TonKhoLeTanForm(forms.ModelForm):
+    class Meta:
+        model = TonKhoLeTan
+        fields = ['hang_hoa', 'ngay_ton', 'ton_dau_ngay', 'ton_cuoi_ngay']
+        widgets = {
+            'ngay_ton': forms.DateInput(attrs={'type': 'date'}),
+            'ton_dau_ngay': forms.NumberInput(attrs={'readonly': 'readonly'}),
+            'ton_cuoi_ngay': forms.NumberInput(attrs={'step': '0.01'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['hang_hoa'].queryset = HangHoa.objects.all()
+        self.fields['ton_dau_ngay'].required = False

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Sửa Tồn Kho Lễ Tân{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Sửa Tồn Kho Lễ Tân</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Sửa Tồn Kho Lễ Tân</h5>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ form.hang_hoa.label }}</label>
+                    {{ form.hang_hoa }}
+                    {% if form.hang_hoa.errors %}
+                        <div class="text-danger">{{ form.hang_hoa.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ form.ngay_ton.label }}</label>
+                    {{ form.ngay_ton }}
+                    {% if form.ngay_ton.errors %}
+                        <div class="text-danger">{{ form.ngay_ton.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">{{ form.ton_dau_ngay.label }}</label>
+                    {{ form.ton_dau_ngay }}
+                    <small class="text-muted">(Tự động tính)</small>
+                    {% if form.ton_dau_ngay.errors %}
+                        <div class="text-danger">{{ form.ton_dau_ngay.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">{{ form.ton_cuoi_ngay.label }}</label>
+                    {{ form.ton_cuoi_ngay }}
+                    {% if form.ton_cuoi_ngay.errors %}
+                        <div class="text-danger">{{ form.ton_cuoi_ngay.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Lưu</button>
+            <a href="{{ next }}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Quay lại</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

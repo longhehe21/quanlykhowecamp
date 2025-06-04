@@ -75,3 +75,17 @@ class TongHopXuatNguyenLieu(models.Model):
 
     def __str__(self):
         return f"{self.cong_thuc_mon.ten_mon} - {self.hang_hoa.ten_hang_hoa}"
+class TonKhoLeTan(models.Model):
+    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.CASCADE)
+    ngay_ton = models.DateField()
+    ton_dau_ngay = models.FloatField(default=0.0)
+    ton_cuoi_ngay = models.FloatField()
+    don_vi_hang_hoa = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        unique_together = ('hang_hoa', 'ngay_ton')
+        verbose_name = "Tồn Kho Lễ Tân"
+        verbose_name_plural = "Tồn Kho Lễ Tân"
+
+    def __str__(self):
+        return f"{self.hang_hoa.ten_hang_hoa} - {self.ngay_ton}"

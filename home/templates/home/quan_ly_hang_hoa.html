@@ -1,363 +1,622 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load widget_tweaks %}
 
-{% block title %}Quản Lý Hàng Hóa - Quản Lý Tồn Kho{% endblock %}
+{% block title %}Quản Lý Hàng Hóa - Quản lý hàng hóa{% endblock %}
 
 {% block content %}
 <h1 class="mb-4">Quản Lý Hàng Hóa</h1>
 
 {% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}
+{% for message in messages %}
+<div class="alert alert-{% if message.tags == 'success' %}success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endfor %}
 {% endif %}
 
-<!-- Form thêm mới tồn kho -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Thêm Tồn Kho Mới</h5>
-        <form method="post">
-            {% csrf_token %}
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">{{ ton_kho_form.hang_hoa.label }}</label>
-                    <select name="hang_hoa" class="form-control" id="id_hang_hoa_ton_kho">
-                        <option value="" {% if not ton_kho_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
-                        {% for hang_hoa in ton_kho_form.hang_hoa.field.queryset %}
-                            <option value="{{ hang_hoa.id }}"
-                                    data-don-vi="{{ hang_hoa.don_vi_hang_hoa }}"
-                                    data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
-                                    {% if ton_kho_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
-                                {{ hang_hoa.ten_hang_hoa }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    {% if ton_kho_form.hang_hoa.errors %}
-                        <div class="text-danger">{{ ton_kho_form.hang_hoa.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">{{ ton_kho_form.ngay_ton.label }}</label>
-                    {{ ton_kho_form.ngay_ton }}
-                    {% if ton_kho_form.ngay_ton.errors %}
-                        <div class="text-danger">{{ ton_kho_form.ngay_ton.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-2 mb-3">
-                    <label class="form-label">{{ ton_kho_form.ton_dau_ngay.label }}</label>
-                    {{ ton_kho_form.ton_dau_ngay }}
-                    <small class="text-muted">(Tự động tính)</small>
-                    {% if ton_kho_form.ton_dau_ngay.errors %}
-                        <div class="text-danger">{{ ton_kho_form.ton_dau_ngay.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-2 mb-3">
-                    <label class="form-label">{{ ton_kho_form.ton_cuoi_ngay.label }}</label>
-                    {{ ton_kho_form.ton_cuoi_ngay }}
-                    {% if ton_kho_form.ton_cuoi_ngay.errors %}
-                        <div class="text-danger">{{ ton_kho_form.ton_cuoi_ngay.errors }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Đơn vị nguyên liệu</label>
-                    <input type="text" id="don_vi_nguyen_lieu_display" class="form-control" readonly>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Thêm Tồn Kho</button>
-        </form>
-    </div>
-</div>
+<!-- Thanh navigation ngang -->
+<ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="ton-kho-tab" data-bs-toggle="tab" data-bs-target="#ton-kho" type="button" role="tab" aria-controls="ton-kho" aria-selected="true">Tồn Kho</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="nhap-hang-tab" data-bs-toggle="tab" data-bs-target="#nhap-hang" type="button" role="tab" aria-controls="nhap-hang" aria-selected="false">Nhập Hàng</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="kho-le-tan-tab" data-bs-toggle="tab" data-bs-target="#kho-le-tan" type="button" role="tab" aria-controls="kho-le-tan" aria-selected="false">Kho Lễ Tân</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="kho-tong-tab" data-bs-toggle="tab" data-bs-target="#kho-tong" type="button" role="tab" aria-controls="kho-tong" aria-selected="false">Kho Tổng</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="luong-dung-tab" data-bs-toggle="tab" data-bs-target="#luong-dung" type="button" role="tab" aria-controls="luong-dung" aria-selected="false">Lượng Dùng</button>
+    </li>
+</ul>
 
-<!-- Form nhập hàng hóa -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Nhập Hàng Hóa</h5>
-        <form method="post" name="nhap_hang_hoa_form">
-            {% csrf_token %}
-            <input type="hidden" name="nhap_hang_hoa_form">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ nhap_hang_hoa_form.hang_hoa.label }}</label>
-                    <select name="hang_hoa" class="form-control" id="id_hang_hoa">
-                        <option value="" {% if not nhap_hang_hoa_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
-                        {% for hang_hoa in nhap_hang_hoa_form.hang_hoa.field.queryset %}
-                            <option value="{{ hang_hoa.id }}"
-                                    data-don-vi="{{ hang_hoa.don_vi_hang_hoa }}"
-                                    data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
-                                    {% if nhap_hang_hoa_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
-                                {{ hang_hoa.ten_hang_hoa }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    {% if nhap_hang_hoa_form.hang_hoa.errors %}
-                        <div class="text-danger">{{ nhap_hang_hoa_form.hang_hoa.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ nhap_hang_hoa_form.ngay_nhap.label }}</label>
-                    {{ nhap_hang_hoa_form.ngay_nhap }}
-                    {% if nhap_hang_hoa_form.ngay_nhap.errors %}
-                        <div class="text-danger">{{ nhap_hang_hoa_form.ngay_nhap.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ nhap_hang_hoa_form.so_luong.label }}</label>
-                    {{ nhap_hang_hoa_form.so_luong }}
-                    {% if nhap_hang_hoa_form.so_luong.errors %}
-                        <div class="text-danger">{{ nhap_hang_hoa_form.so_luong.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Đơn vị hàng hóa</label>
-                    <input type="text" id="don_vi_hang_hoa_display" class="form-control" readonly>
-                </div>
+<!-- Nội dung các tab -->
+<div class="tab-content" id="myTabContent">
+    <!-- Tab Tồn Kho -->
+    <div class="tab-pane fade show active" id="ton-kho" role="tabpanel" aria-labelledby="ton-kho-tab">
+        <!-- Form thêm mới tồn kho -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Thêm Tồn Kho Mới</h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ ton_kho_form.hang_hoa.label }}</label>
+                            <select name="hang_hoa" class="form-control" id="id_hang_hoa_ton_kho">
+                                <option value="" {% if not ton_kho_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
+                                {% for hang_hoa in ton_kho_form.hang_hoa.field.queryset %}
+                                <option value="{{ hang_hoa.id }}"
+                                        data-don-vi="{{ hang_hoa.don_vi_hang_hoa }}"
+                                        data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
+                                        {% if ton_kho_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ hang_hoa.ten_hang_hoa }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if ton_kho_form.hang_hoa.errors %}
+                            <div class="text-danger">{{ ton_kho_form.hang_hoa.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ ton_kho_form.ngay_ton.label }}</label>
+                            {{ ton_kho_form.ngay_ton|add_class:"form-control" }}
+                            {% if ton_kho_form.ngay_ton.errors %}
+                            <div class="text-danger">{{ ton_kho_form.ngay_ton.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">{{ ton_kho_form.ton_dau_ngay.label }}</label>
+                            {{ ton_kho_form.ton_dau_ngay|add_class:"form-control" }}
+                            <small class="text-muted">(Tự động tính)</small>
+                            {% if ton_kho_form.ton_dau_ngay.errors %}
+                            <div class="text-danger">{{ ton_kho_form.ton_dau_ngay.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">{{ ton_kho_form.ton_cuoi_ngay.label }}</label>
+                            {{ ton_kho_form.ton_cuoi_ngay|add_class:"form-control" }}
+                            {% if ton_kho_form.ton_cuoi_ngay.errors %}
+                            <div class="text-danger">{{ ton_kho_form.ton_cuoi_ngay.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Đơn vị nguyên liệu</label>
+                            <input type="text" id="don_vi_nguyen_lieu_display" class="form-control" readonly>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Thêm Tồn Kho</button>
+                </form>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-truck-loading me-2"></i>Nhập Hàng Hóa</button>
-        </form>
-    </div>
-</div>
-
-<!-- Form nhập tồn kho từ Excel -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Nhập Tồn Kho từ Excel</h5>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <input type="hidden" name="import_type" value="ton_kho">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ import_form.excel_file.label }}</label>
-                    {{ import_form.excel_file }}
-                    <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_ton, ton_cuoi_ngay</small>
-                    {% if import_form.excel_file.errors %}
-                        <div class="text-danger">{{ import_form.excel_file.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Form nhập hàng hóa từ Excel -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Nhập Hàng Hóa từ Excel</h5>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <input type="hidden" name="import_type" value="nhap_hang_hoa">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ import_form.excel_file.label }}</label>
-                    {{ import_form.excel_file }}
-                    <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_nhap, don_vi_hang_hoa, so_luong</small>
-                    {% if import_form.excel_file.errors %}
-                        <div class="text-danger">{{ import_form.excel_file.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Lọc ngày để tính lượng dùng hàng hóa -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Lọc Lượng Dùng Hàng Hóa</h5>
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label for="luong_dung_date_from" class="form-label">Từ Ngày:</label>
-                <input type="date" name="luong_dung_date_from" id="luong_dung_date_from" class="form-control" value="{{ luong_dung_date_from|date:'Y-m-d' }}">
-            </div>
-            <div class="col-md-4">
-                <label for="luong_dung_date_to" class="form-label">Đến Ngày:</label>
-                <input type="date" name="luong_dung_date_to" id="luong_dung_date_to" class="form-control" value="{{ luong_dung_date_to|date:'Y-m-d' }}">
-            </div>
-            <div class="col-md-4 align-self-end">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc Lượng Dùng</button>
-                <a href="{% url 'quan_ly_hang_hoa' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Xóa Bộ Lọc</a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Bảng Lượng Dùng Hàng Hóa -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Lượng Dùng Hàng Hóa từ {{ luong_dung_date_from|date:'d/m/Y' }} đến {{ luong_dung_date_to|date:'d/m/Y' }}</h5>
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Tên Hàng Hóa</th>
-                    <th>Đơn Vị</th>
-                    <th>Lượng Dùng Tổng (Từ {{ luong_dung_date_from|date:'d/m/Y' }} đến {{ luong_dung_date_to|date:'d/m/Y' }})</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in luong_dung_list %}
-                <tr>
-                    <td>{{ item.hang_hoa.ten_hang_hoa }}</td>
-                    <td>{{ item.don_vi }}</td>
-                    <td>{{ item.luong_dung_tong|floatformat:2 }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3" class="text-center">Không có dữ liệu lượng dùng.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Danh sách tồn kho với tìm kiếm và lọc -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="card-title mb-0">Danh Sách Tồn Kho</h5>
-            <form action="{% url 'delete_all_ton_kho' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi tồn kho?')">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
-            </form>
         </div>
-        <!-- Thanh tìm kiếm và bộ lọc -->
-        <form method="get" class="mb-3">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Tìm kiếm theo tên hàng hóa</label>
-                    <input type="text" name="search" class="form-control" placeholder="Nhập tên hàng hóa" value="{{ search_query }}">
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">{{ filter_form.ngay_bat_dau.label }}</label>
-                    {{ filter_form.ngay_bat_dau }}
-                    {% if filter_form.ngay_bat_dau.errors %}
-                        <div class="text-danger">{{ filter_form.ngay_bat_dau.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">{{ filter_form.ngay_ket_thuc.label }}</label>
-                    {{ filter_form.ngay_ket_thuc }}
-                    {% if filter_form.ngay_ket_thuc.errors %}
-                        <div class="text-danger">{{ filter_form.ngay_ket_thuc.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-2 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
-                </div>
-            </div>
-        </form>
-        <!-- Bảng danh sách -->
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Tên Hàng Hóa</th>
-                    <th>Ngày Tồn</th>
-                    <th>Tồn Đầu Ngày</th>
-                    <th>Tồn Cuối Ngày</th>
-                    <th>Đơn Vị Nguyên Liệu</th>
-                    <th>Thao Tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ton_kho in ton_kho_list %}
-                <tr>
-                    <td>{{ ton_kho.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
-                    <td>{{ ton_kho.ngay_ton }}</td>
-                    <td>{{ ton_kho.ton_dau_ngay|floatformat:2 }}</td>
-                    <td>{{ ton_kho.ton_cuoi_ngay|floatformat:2 }}</td>
-                    <td>{{ ton_kho.hang_hoa.don_vi_nguyen_lieu|default:"Không xác định" }}</td>
-                    <td>
-                        <a href="{% url 'edit_ton_kho_hang_hoa' ton_kho.id %}?next={% url 'quan_ly_hang_hoa' %}" class="btn btn-sm btn-outline-warning">
-                            <i class="fas fa-edit me-1"></i> Sửa
-                        </a>
-                        <form action="{% url 'delete_ton_kho_hang_hoa' ton_kho.id %}" method="post" style="display:inline;">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{% url 'quan_ly_hang_hoa' %}">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa?')">
-                                <i class="fas fa-trash me-1"></i> Xóa
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center">Chưa có dữ liệu tồn kho</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
 
-<!-- Danh sách nhập hàng hóa -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="card-title mb-0">Lịch Sử Nhập Hàng</h5>
-            <form action="{% url 'delete_all_nhap_hang' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi nhập hàng?')">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
-            </form>
-        </div>
-        <!-- Thanh lọc theo ngày nhập -->
-        <form method="get" class="mb-3">
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Ngày nhập bắt đầu</label>
-                    <input type="date" name="ngay_nhap_bat_dau" class="form-control" value="{{ ngay_nhap_bat_dau }}">
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Ngày nhập kết thúc</label>
-                    <input type="date" name="ngay_nhap_ket_thuc" class="form-control" value="{{ ngay_nhap_ket_thuc }}">
-                </div>
-                <div class="col-md-2 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
-                </div>
+        <!-- Form nhập tồn kho từ Excel -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Nhập Tồn Kho từ Excel</h5>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="import_type" value="ton_kho">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ import_form.excel_file.label }}</label>
+                            {{ import_form.excel_file }}
+                            <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_ton, ton_cuoi_ngay</small>
+                            {% if import_form.excel_file.errors %}
+                            <div class="text-danger">{{ import_form.excel_file.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
+                        </div>
+                    </div>
+                </form>
             </div>
-        </form>
-        <!-- Bảng danh sách -->
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Tên Hàng Hóa</th>
-                    <th>Ngày Nhập</th>
-                    <th>Số Lượng</th>
-                    <th>Đơn Vị</th>
-                    <th>Thao Tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for nhap in nhap_hang_hoa_list %}
-                <tr>
-                    <td>{{ nhap.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
-                    <td>{{ nhap.ngay_nhap }}</td>
-                    <td>{{ nhap.so_luong|floatformat:2 }}</td>
-                    <td>{{ nhap.don_vi_hang_hoa|default:"Không xác định" }}</td>
-                    <td>
-                        <form action="{% url 'delete_nhap_hang_hoa' nhap.id %}" method="post" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa bản ghi nhập hàng này?')">
-                                <i class="fas fa-trash me-1"></i> Xóa
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="text-center">Chưa có bản ghi nhập hàng</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        </div>
+
+        <!-- Danh sách tồn kho với tìm kiếm và lọc -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Danh Sách Tồn Kho</h5>
+                    <form action="{% url 'delete_all_ton_kho' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi tồn kho?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
+                    </form>
+                </div>
+                <!-- Thanh tìm kiếm và bộ lọc -->
+                <form method="get" class="mb-3">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Tìm kiếm theo tên hàng hóa</label>
+                            <input type="text" name="search" class="form-control" placeholder="Nhập tên hàng hóa" value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ filter_form.ngay_bat_dau.label }}</label>
+                            {{ filter_form.ngay_bat_dau }}
+                            {% if filter_form.ngay_bat_dau.errors %}
+                            <div class="text-danger">{{ filter_form.ngay_bat_dau.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ filter_form.ngay_ket_thuc.label }}</label>
+                            {{ filter_form.ngay_ket_thuc }}
+                            {% if filter_form.ngay_ket_thuc.errors %}
+                            <div class="text-danger">{{ filter_form.ngay_ket_thuc.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
+                        </div>
+                    </div>
+                </form>
+                <!-- Bảng danh sách -->
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tên Hàng Hóa</th>
+                            <th>Ngày Tồn</th>
+                            <th>Tồn Đầu Ngày</th>
+                            <th>Tồn Cuối Ngày</th>
+                            <th>Đơn Vị Nguyên Liệu</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ton_kho in ton_kho_list %}
+                        <tr>
+                            <td>{{ ton_kho.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
+                            <td>{{ ton_kho.ngay_ton }}</td>
+                            <td>{{ ton_kho.ton_dau_ngay|floatformat:2 }}</td>
+                            <td>{{ ton_kho.ton_cuoi_ngay|floatformat:2 }}</td>
+                            <td>{{ ton_kho.hang_hoa.don_vi_nguyen_lieu|default:"Không xác định" }}</td>
+                            <td>
+                                <a href="{% url 'edit_ton_kho_hang_hoa' ton_kho.id %}?next={% url 'quan_ly_hang_hoa' %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-edit me-1"></i> Sửa
+                                </a>
+                                <form action="{% url 'delete_ton_kho_hang_hoa' ton_kho.id %}" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'quan_ly_hang_hoa' %}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa?')">
+                                        <i class="fas fa-trash me-1"></i> Xóa
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Chưa có dữ liệu tồn kho</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Nhập Hàng -->
+    <div class="tab-pane fade" id="nhap-hang" role="tabpanel" aria-labelledby="nhap-hang-tab">
+        <!-- Form nhập hàng hóa -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Nhập Hàng Hóa</h5>
+                <form method="post" name="nhap_hang_hoa_form">
+                    {% csrf_token %}
+                    <input type="hidden" name="nhap_hang_hoa_form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ nhap_hang_hoa_form.hang_hoa.label }}</label>
+                            <select name="hang_hoa" class="form-control" id="id_hang_hoa">
+                                <option value="" {% if not nhap_hang_hoa_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
+                                {% for hang_hoa in nhap_hang_hoa_form.hang_hoa.field.queryset %}
+                                <option value="{{ hang_hoa.id }}"
+                                        data-don-vi="{{ hang_hoa.don_vi_hang_hoa }}"
+                                        data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
+                                        {% if nhap_hang_hoa_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ hang_hoa.ten_hang_hoa }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if nhap_hang_hoa_form.hang_hoa.errors %}
+                            <div class="text-danger">{{ nhap_hang_hoa_form.hang_hoa.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ nhap_hang_hoa_form.ngay_nhap.label }}</label>
+                            {{ nhap_hang_hoa_form.ngay_nhap|add_class:"form-control" }}
+                            {% if nhap_hang_hoa_form.ngay_nhap.errors %}
+                            <div class="text-danger">{{ nhap_hang_hoa_form.ngay_nhap.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ nhap_hang_hoa_form.so_luong.label }}</label>
+                            {{ nhap_hang_hoa_form.so_luong|add_class:"form-control" }}
+                            {% if nhap_hang_hoa_form.so_luong.errors %}
+                            <div class="text-danger">{{ nhap_hang_hoa_form.so_luong.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Đơn vị hàng hóa</label>
+                            <input type="text" id="don_vi_hang_hoa_display" class="form-control" readonly>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-truck-loading me-2"></i>Nhập Hàng Hóa</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Form nhập hàng hóa từ Excel -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Nhập Hàng Hóa từ Excel</h5>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="import_type" value="nhap_hang_hoa">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ import_form.excel_file.label }}</label>
+                            {{ import_form.excel_file }}
+                            <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_nhap, don_vi_hang_hoa, so_luong</small>
+                            {% if import_form.excel_file.errors %}
+                            <div class="text-danger">{{ import_form.excel_file.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Danh sách nhập hàng hóa -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Lịch Sử Nhập Hàng</h5>
+                    <form action="{% url 'delete_all_nhap_hang' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi nhập hàng?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
+                    </form>
+                </div>
+                <!-- Thanh lọc theo ngày nhập -->
+                <form method="get" class="mb-3">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Ngày nhập bắt đầu</label>
+                            <input type="date" name="ngay_nhap_bat_dau" class="form-control" value="{{ ngay_nhap_bat_dau }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Ngày nhập kết thúc</label>
+                            <input type="date" name="ngay_nhap_ket_thuc" class="form-control" value="{{ ngay_nhap_ket_thuc }}">
+                        </div>
+                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
+                        </div>
+                    </div>
+                </form>
+                <!-- Bảng danh sách -->
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tên Hàng Hóa</th>
+                            <th>Ngày Nhập</th>
+                            <th>Số Lượng</th>
+                            <th>Đơn Vị</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for nhap in nhap_hang_hoa_list %}
+                        <tr>
+                            <td>{{ nhap.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
+                            <td>{{ nhap.ngay_nhap }}</td>
+                            <td>{{ nhap.so_luong|floatformat:2 }}</td>
+                            <td>{{ nhap.don_vi_hang_hoa|default:"Không xác định" }}</td>
+                            <td>
+                                <form action="{% url 'delete_nhap_hang_hoa' nhap.id %}" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa bản ghi nhập hàng này?')">
+                                        <i class="fas fa-trash me-1"></i> Xóa
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Chưa có bản ghi nhập hàng</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Kho Lễ Tân -->
+    <div class="tab-pane fade" id="kho-le-tan" role="tabpanel" aria-labelledby="kho-le-tan-tab">
+        <!-- Form thêm mới tồn kho lễ tân -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Thêm Tồn Kho Lễ Tân Mới</h5>
+                <form method="post" name="ton_kho_le_tan_form">
+                    {% csrf_token %}
+                    <input type="hidden" name="ton_kho_le_tan_form" value="true">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ ton_kho_le_tan_form.hang_hoa.label }}</label>
+                            <select name="hang_hoa" class="form-control" id="id_hang_hoa_le_tan">
+                                <option value="" {% if not ton_kho_le_tan_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
+                                {% for hang_hoa in ton_kho_le_tan_form.hang_hoa.field.queryset %}
+                                <option value="{{ hang_hoa.id }}"
+                                        data-don-vi-hang-hoa="{{ hang_hoa.don_vi_hang_hoa }}"
+                                        data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
+                                        {% if ton_kho_le_tan_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ hang_hoa.ten_hang_hoa }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if ton_kho_le_tan_form.hang_hoa.errors %}
+                            <div class="text-danger">{{ ton_kho_le_tan_form.hang_hoa.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ ton_kho_le_tan_form.ngay_ton.label }}</label>
+                            {{ ton_kho_le_tan_form.ngay_ton|add_class:"form-control" }}
+                            {% if ton_kho_le_tan_form.ngay_ton.errors %}
+                            <div class="text-danger">{{ ton_kho_le_tan_form.ngay_ton.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">{{ ton_kho_le_tan_form.ton_dau_ngay.label }}</label>
+                            {{ ton_kho_le_tan_form.ton_dau_ngay|add_class:"form-control" }}
+                            <small class="text-muted">(Tự động tính)</small>
+                            {% if ton_kho_le_tan_form.ton_dau_ngay.errors %}
+                            <div class="text-danger">{{ ton_kho_le_tan_form.ton_dau_ngay.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">{{ ton_kho_le_tan_form.ton_cuoi_ngay.label }}</label>
+                            {{ ton_kho_le_tan_form.ton_cuoi_ngay|add_class:"form-control" }}
+                            {% if ton_kho_le_tan_form.ton_cuoi_ngay.errors %}
+                            <div class="text-danger">{{ ton_kho_le_tan_form.ton_cuoi_ngay.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Đơn vị hàng hóa</label>
+                            <input type="text" id="don_vi_hang_hoa_le_tan_display" class="form-control" readonly>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Thêm Tồn Kho Lễ Tân</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Form nhập tồn kho lễ tân từ Excel -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Nhập Tồn Kho Lễ Tân từ Excel</h5>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="import_type" value="ton_kho_le_tan">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ import_form.excel_file.label }}</label>
+                            {{ import_form.excel_file }}
+                            <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_ton, ton_cuoi_ngay</small>
+                            {% if import_form.excel_file.errors %}
+                            <div class="text-danger">{{ import_form.excel_file.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Danh sách tồn kho lễ tân với tìm kiếm và lọc -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Danh Sách Tồn Kho Lễ Tân</h5>
+                    <form action="{% url 'delete_all_ton_kho_le_tan' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi tồn kho lễ tân?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
+                    </form>
+                </div>
+                <!-- Thanh tìm kiếm và bộ lọc -->
+                <form method="get" class="mb-3">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Tìm kiếm theo tên hàng hóa</label>
+                            <input type="text" name="search_le_tan" class="form-control" placeholder="Nhập tên hàng hóa" value="{{ search_le_tan_query }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ filter_le_tan_form.ngay_bat_dau.label }}</label>
+                            {{ filter_le_tan_form.ngay_bat_dau }}
+                            {% if filter_le_tan_form.ngay_bat_dau.errors %}
+                            <div class="text-danger">{{ filter_le_tan_form.ngay_bat_dau.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ filter_le_tan_form.ngay_ket_thuc.label }}</label>
+                            {{ filter_le_tan_form.ngay_ket_thuc }}
+                            {% if filter_le_tan_form.ngay_ket_thuc.errors %}
+                            <div class="text-danger">{{ filter_le_tan_form.ngay_ket_thuc.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
+                        </div>
+                    </div>
+                </form>
+                <!-- Bảng danh sách -->
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tên Hàng Hóa</th>
+                            <th>Ngày Tồn</th>
+                            <th>Tồn Đầu Ngày</th>
+                            <th>Tồn Cuối Ngày</th>
+                            <th>Đơn Vị Hàng Hóa</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ton_kho in ton_kho_le_tan_list %}
+                        <tr>
+                            <td>{{ ton_kho.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
+                            <td>{{ ton_kho.ngay_ton }}</td>
+                            <td>{{ ton_kho.ton_dau_ngay|floatformat:2 }}</td>
+                            <td>{{ ton_kho.ton_cuoi_ngay|floatformat:2 }}</td>
+                            <td>{{ ton_kho.hang_hoa.don_vi_hang_hoa|default:"Không xác định" }}</td>
+                            <td>
+                                <a href="{% url 'edit_ton_kho_le_tan' ton_kho.id %}?next={% url 'quan_ly_hang_hoa' %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-edit me-1"></i> Sửa
+                                </a>
+                                <form action="{% url 'delete_ton_kho_le_tan' ton_kho.id %}" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'quan_ly_hang_hoa' %}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa?')">
+                                        <i class="fas fa-trash me-1"></i> Xóa
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Chưa có dữ liệu tồn kho lễ tân</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Kho Tổng -->
+    <div class="tab-pane fade" id="kho-tong" role="tabpanel" aria-labelledby="kho-tong-tab">
+        <!-- Form lọc ngày tổng tồn kho -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Lọc Tổng Tồn Kho</h5>
+                
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="tong_ton_date" class="form-label">Ngày Tổng Tồn:</label>
+                        <input type="date" name="tong_ton_date" id="tong_ton_date" class="form-control" value="{{ tong_ton_date|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4 align-self-end">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
+                        <a href="{% url 'quan_ly_hang_hoa' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Xóa Bộ Lọc</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tổng tồn kho -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Tổng Tồn Kho</h5>
+                <!-- Nút Xuất Excel -->
+                <form method="get" action="{% url 'export_tong_ton_kho_excel' %}">
+                    <input type="hidden" name="tong_ton_date" value="{{ tong_ton_date|date:'Y-m-d' }}">
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-excel me-2"></i>Xuất Excel
+                    </button>
+                </form>
+                <table class="table table-bordered mt-3">
+                    <thead>
+                        <tr>
+                            <th>Tên Hàng Hóa</th>
+                            <th>Tồn Kho</th>
+                            <th>Tồn Kho Lễ Tân</th>
+                            <th>Quy Đổi</th>
+                            <th>Tổng Tồn (G)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in tong_ton_kho_list %}
+                        <tr>
+                            <td>{{ item.ten_hang_hoa }}</td>
+                            <td>{{ item.ton_kho|floatformat:2 }} {{ item.don_vi }}</td>
+                            <td>{{ item.ton_kho_le_tan|floatformat:2 }} {{ item.don_vi_hang_hoa }}</td>
+                            <td>{{ item.quy_doi|floatformat:2 }} {{ item.don_vi }}</td>
+                            <td>{{ item.tong_ton|floatformat:2 }} {{ item.don_vi }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">Không có dữ liệu tổng tồn kho.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Lượng Dùng -->
+    <div class="tab-pane fade" id="luong-dung" role="tabpanel" aria-labelledby="luong-dung-tab">
+        <!-- Lọc ngày để tính lượng dùng hàng hóa -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Lọc Lượng Dùng Hàng Hóa</h5>
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="luong_dung_date_from" class="form-label">Từ Ngày:</label>
+                        <input type="date" name="luong_dung_date_from" id="luong_dung_date_from" class="form-control" value="{{ luong_dung_date_from|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="luong_dung_date_to" class="form-label">Đến Ngày:</label>
+                        <input type="date" name="luong_dung_date_to" id="luong_dung_date_to" class="form-control" value="{{ luong_dung_date_to|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4 align-self-end">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc Lượng Dùng</button>
+                        <a href="{% url 'quan_ly_hang_hoa' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Xóa Bộ Lọc</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bảng Lượng Dùng Hàng Hóa -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Lượng Dùng Hàng Hóa từ {{ luong_dung_date_from|date:'d/m/Y' }} đến {{ luong_dung_date_to|date:'d/m/Y' }}</h5>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tên Hàng Hóa</th>
+                            <th>Đơn Vị</th>
+                            <th>Lượng Dùng Tổng (Từ {{ luong_dung_date_from|date:'d/m/Y' }} đến {{ luong_dung_date_to|date:'d/m/Y' }})</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in luong_dung_list %}
+                        <tr>
+                            <td>{{ item.hang_hoa.ten_hang_hoa }}</td>
+                            <td>{{ item.don_vi }}</td>
+                            <td>{{ item.luong_dung_tong|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">Không có dữ liệu lượng dùng.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -368,17 +627,21 @@
         const hangHoaSelects = document.querySelectorAll('select[name="hang_hoa"]');
         const donViNguyenLieuDisplay = document.getElementById('don_vi_nguyen_lieu_display');
         const donViHangHoaDisplay = document.getElementById('don_vi_hang_hoa_display');
+        const donViHangHoaLeTanDisplay = document.getElementById('don_vi_hang_hoa_le_tan_display');
 
         hangHoaSelects.forEach(select => {
             select.addEventListener('change', function () {
                 const selectedOption = this.options[this.selectedIndex];
                 const donViNguyenLieu = selectedOption.getAttribute('data-don-vi-nguyen-lieu') || '';
-                const donViHangHoa = selectedOption.getAttribute('data-don-vi') || '';
+                const donViHangHoa = selectedOption.getAttribute('data-don-vi-hang-hoa') || '';
                 if (donViNguyenLieuDisplay && select.id === 'id_hang_hoa_ton_kho') {
                     donViNguyenLieuDisplay.value = donViNguyenLieu;
                 }
                 if (donViHangHoaDisplay && select.id === 'id_hang_hoa') {
                     donViHangHoaDisplay.value = donViHangHoa;
+                }
+                if (donViHangHoaLeTanDisplay && select.id === 'id_hang_hoa_le_tan') {
+                    donViHangHoaLeTanDisplay.value = donViHangHoa;
                 }
             });
 
@@ -386,26 +649,54 @@
                 const defaultOption = select.querySelector(`option[value="${select.value}"]`);
                 if (defaultOption) {
                     const defaultDonViNguyenLieu = defaultOption.getAttribute('data-don-vi-nguyen-lieu') || '';
-                    const defaultDonViHangHoa = defaultOption.getAttribute('data-don-vi') || '';
+                    const defaultDonViHangHoa = defaultOption.getAttribute('data-don-vi-hang-hoa') || '';
                     if (donViNguyenLieuDisplay && select.id === 'id_hang_hoa_ton_kho') {
                         donViNguyenLieuDisplay.value = defaultDonViNguyenLieu;
                     }
                     if (donViHangHoaDisplay && select.id === 'id_hang_hoa') {
                         donViHangHoaDisplay.value = defaultDonViHangHoa;
                     }
+                    if (donViHangHoaLeTanDisplay && select.id === 'id_hang_hoa_le_tan') {
+                        donViHangHoaLeTanDisplay.value = defaultDonViHangHoa;
+                    }
                 }
             }
         });
 
-        // Xác nhận khi gửi form Nhập Hàng Hóa
+        // Xác nhận và validate form Thêm Tồn Kho Lễ Tân
+        document.querySelector('form[name="ton_kho_le_tan_form"]').addEventListener('submit', function (e) {
+            const hangHoa = this.querySelector('select[name="hang_hoa"]').value;
+            if (!hangHoa) {
+                e.preventDefault();
+                alert('Vui lòng chọn hàng hóa trước khi thêm tồn kho lễ tân.');
+                return;
+            }
+            if (!confirm('Bạn có chắc muốn thêm tồn kho lễ tân này?')) {
+                e.preventDefault();
+            }
+        });
+
+        // Xác nhận và validate form Nhập Hàng Hóa
         document.querySelector('form[name="nhap_hang_hoa_form"]').addEventListener('submit', function (e) {
+            const hangHoa = this.querySelector('select[name="hang_hoa"]').value;
+            if (!hangHoa) {
+                e.preventDefault();
+                alert('Vui lòng chọn hàng hóa trước khi nhập hàng.');
+                return;
+            }
             if (!confirm('Bạn có chắc muốn nhập hàng hóa này?')) {
                 e.preventDefault();
             }
         });
 
-        // Xác nhận khi gửi form Thêm Tồn Kho
-        document.querySelector('form:not([name="nhap_hang_hoa_form"]):not([enctype="multipart/form-data"])').addEventListener('submit', function (e) {
+        // Xác nhận và validate form Thêm Tồn Kho
+        document.querySelector('form:not([name="nhap_hang_hoa_form"]):not([name="ton_kho_le_tan_form"]):not([enctype="multipart/form-data"])').addEventListener('submit', function (e) {
+            const hangHoa = this.querySelector('select[name="hang_hoa"]').value;
+            if (!hangHoa) {
+                e.preventDefault();
+                alert('Vui lòng chọn hàng hóa trước khi thêm tồn kho.');
+                return;
+            }
             if (this.querySelector('#id_hang_hoa_ton_kho') && !confirm('Bạn có chắc muốn thêm tồn kho này?')) {
                 e.preventDefault();
             }
@@ -415,7 +706,14 @@
         document.querySelectorAll('form[enctype="multipart/form-data"]').forEach(form => {
             form.addEventListener('submit', function (e) {
                 const importType = this.querySelector('input[name="import_type"]').value;
-                const message = importType === 'ton_kho' ? 'Bạn có chắc muốn nhập tồn kho từ file Excel này?' : 'Bạn có chắc muốn nhập hàng hóa từ file Excel này?';
+                let message = '';
+                if (importType === 'ton_kho') {
+                    message = 'Bạn có chắc muốn nhập tồn kho từ file Excel này?';
+                } else if (importType === 'nhap_hang_hoa') {
+                    message = 'Bạn có chắc muốn nhập hàng hóa từ file Excel này?';
+                } else if (importType === 'ton_kho_le_tan') {
+                    message = 'Bạn có chắc muốn nhập tồn kho lễ tân từ file Excel này?';
+                }
                 if (!confirm(message)) {
                     e.preventDefault();
                 }

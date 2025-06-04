@@ -8,8 +8,10 @@ urlpatterns = [
     path('edit-ton-kho-hang-hoa/<int:ton_kho_id>/', views.edit_ton_kho_hang_hoa, name='edit_ton_kho_hang_hoa'),
     path('quan-ly-ton-kho/', views.quan_ly_ton_kho, name='quan_ly_ton_kho'),
     path('xuat-theo-mon/', views.xuat_theo_mon, name='xuat_theo_mon'),
-    path('so-sanh-fabi/', views.so_sanh_fabi_view, name='so_sanh_fabi'),
+    path('so-sanh-fabi/', views.so_sanh_fabi, name='so_sanh_fabi'),
     path('quan-ly-hang-hoa/', views.quan_ly_hang_hoa, name='quan_ly_hang_hoa'),
+    path('export-tong-ton-kho-excel/', views.export_tong_ton_kho_excel, name='export_tong_ton_kho_excel'),
+    path('export-so-sanh-fabi-excel/', views.export_so_sanh_fabi_excel, name='export_so_sanh_fabi_excel'),
     path('nhap-hang-hoa/delete/<int:id>/', views.delete_nhap_hang_hoa, name='delete_nhap_hang_hoa'),
     path('xuat-mon/delete/<int:id>/', views.delete_xuat_mon, name='delete_xuat_mon'),
     path('xuat-mon/delete-all/', views.delete_all_xuat_mon, name='delete_all_xuat_mon'),
@@ -23,4 +25,8 @@ urlpatterns = [
     path('hang-hoa/delete-all/', views.delete_all_hang_hoa, name='delete_all_hang_hoa'),
     path('delete-cong-thuc/<int:id>/', views.delete_cong_thuc, name='delete_cong_thuc'),  # URL xóa từng công thức
     path('delete-all-cong-thuc/', views.delete_all_cong_thuc, name='delete_all_cong_thuc'),  # URL xóa tất cả công thức
+    path('ton-kho-le-tan/edit/<int:ton_kho_id>/', views.edit_ton_kho_le_tan, name='edit_ton_kho_le_tan'),
+    path('ton-kho-le-tan/delete/<int:ton_kho_id>/', views.delete_ton_kho_le_tan, name='delete_ton_kho_le_tan'),
+    path('ton-kho-le-tan/delete-all/', views.delete_all_ton_kho_le_tan, name='delete_all_ton_kho_le_tan'),
+    # Các URL khác
 ]
