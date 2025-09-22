@@ -126,9 +126,18 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="card-title mb-0">Danh Sách Tồn Kho</h5>
-                    <form action="{% url 'delete_all_ton_kho' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi tồn kho?')">
+                    <!-- Form xóa theo khoảng ngày -->
+                    <form action="{% url 'delete_ton_kho_by_date_range' %}" method="post" class="d-flex align-items-center" onsubmit="return confirm('Bạn có chắc muốn xóa các bản ghi tồn kho trong khoảng ngày này?')">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
+                        <div class="me-2">
+                            <label class="form-label">Từ ngày</label>
+                            <input type="date" name="ngay_bat_dau" class="form-control" required>
+                        </div>
+                        <div class="me-2">
+                            <label class="form-label">Đến ngày</label>
+                            <input type="date" name="ngay_ket_thuc" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Theo Ngày</button>
                     </form>
                 </div>
                 <!-- Thanh tìm kiếm và bộ lọc -->

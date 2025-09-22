@@ -1293,15 +1293,6 @@ def delete_all_tong_hop(request):
         return redirect('xuat_theo_mon')
     return redirect('xuat_theo_mon')
 
-def delete_all_ton_kho(request):
-    if request.method == 'POST':
-        try:
-            count = TonKhoHangHoa.objects.all().delete()[0]
-            messages.success(request, f'Đã xóa {count} bản ghi tồn kho thành công!')
-        except Exception as e:
-            messages.error(request, f'Lỗi khi xóa tất cả bản ghi tồn kho: {str(e)}')
-        return redirect('quan_ly_hang_hoa')
-    return redirect('quan_ly_hang_hoa')
 
 def delete_all_nhap_hang(request):
     if request.method == 'POST':
@@ -1310,5 +1301,28 @@ def delete_all_nhap_hang(request):
             messages.success(request, f'Đã xóa {count} bản ghi nhập hàng thành công!')
         except Exception as e:
             messages.error(request, f'Lỗi khi xóa tất cả bản ghi nhập hàng: {str(e)}')
+        return redirect('quan_ly_hang_hoa')
+    return redirect('quan_ly_hang_hoa')
+
+
+def delete_ton_kho_by_date_range(request):
+    if request.method == 'POST':
+        ngay_bat_dau = request.POST.get('ngay_bat_dau')
+        ngay_ket_thuc = request.POST.get('ngay_ket_thuc')
+        try:
+            ngay_bat_dau = datetime.strptime(ngay_bat_dau, '%Y-%m-%d').date()
+            ngay_ket_thuc = datetime.strptime(ngay_ket_thuc, '%Y-%m-%d').date()
+            if ngay_bat_dau > ngay_ket_thuc:
+                messages.error(request, 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.')
+                return redirect('quan_ly_hang_hoa')
+            
+            count = TonKhoHangHoa.objects.filter(
+                ngay_ton__range=[ngay_bat_dau, ngay_ket_thuc]
+            ).delete()[0]
+            messages.success(request, f'Đã xóa {count} bản ghi tồn kho trong khoảng từ {ngay_bat_dau} đến {ngay_ket_thuc} thành công!')
+        except ValueError:
+            messages.error(request, 'Định dạng ngày không hợp lệ.')
+        except Exception as e:
+            messages.error(request, f'Lỗi khi xóa bản ghi tồn kho: {str(e)}')
         return redirect('quan_ly_hang_hoa')
     return redirect('quan_ly_hang_hoa')

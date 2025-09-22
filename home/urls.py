@@ -6,7 +6,6 @@ urlpatterns = [
     path('so-sanh-ton-kho/<int:ky_id>/', views.so_sanh_ton_kho, name='so_sanh_ton_kho'),
     path('delete-ton-kho-hang-hoa/<int:ton_kho_id>/', views.delete_ton_kho_hang_hoa, name='delete_ton_kho_hang_hoa'),
     path('edit-ton-kho-hang-hoa/<int:ton_kho_id>/', views.edit_ton_kho_hang_hoa, name='edit_ton_kho_hang_hoa'),
-    path('quan-ly-ton-kho/', views.quan_ly_ton_kho, name='quan_ly_ton_kho'),
     path('xuat-theo-mon/', views.xuat_theo_mon, name='xuat_theo_mon'),
     path('so-sanh-fabi/', views.so_sanh_fabi, name='so_sanh_fabi'),
     path('quan-ly-hang-hoa/', views.quan_ly_hang_hoa, name='quan_ly_hang_hoa'),
@@ -18,7 +17,6 @@ urlpatterns = [
     path('tong-hop/delete/<int:id>/', views.delete_tong_hop, name='delete_tong_hop'),
     path('tong-hop/delete-all/', views.delete_all_tong_hop, name='delete_all_tong_hop'),
     path('quan-ly-hang-hoa/', views.quan_ly_hang_hoa, name='quan_ly_hang_hoa'),
-    path('delete-all-ton-kho/', views.delete_all_ton_kho, name='delete_all_ton_kho'),
     path('delete-all-nhap-hang/', views.delete_all_nhap_hang, name='delete_all_nhap_hang'),
     path('hang-hoa/edit/<int:id>/', views.edit_hang_hoa, name='edit_hang_hoa'),
     path('hang-hoa/delete/<int:id>/', views.delete_hang_hoa, name='delete_hang_hoa'),
@@ -28,5 +26,6 @@ urlpatterns = [
     path('ton-kho-le-tan/edit/<int:ton_kho_id>/', views.edit_ton_kho_le_tan, name='edit_ton_kho_le_tan'),
     path('ton-kho-le-tan/delete/<int:ton_kho_id>/', views.delete_ton_kho_le_tan, name='delete_ton_kho_le_tan'),
     path('ton-kho-le-tan/delete-all/', views.delete_all_ton_kho_le_tan, name='delete_all_ton_kho_le_tan'),
+    path('delete-ton-kho-by-date-range/', views.delete_ton_kho_by_date_range, name='delete_ton_kho_by_date_range'),
     # Các URL khác
 ]

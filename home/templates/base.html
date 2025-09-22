@@ -36,7 +36,7 @@
                         <a class="nav-link {% if request.path == '/homepage/' %}active{% endif %}" href="{% url 'homepage' %}"><i class="fas fa-home"></i> Trang Chủ</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/quan-ly-ton-kho/' %}active{% endif %}" href="{% url 'quan_ly_ton_kho' %}"><i class="fas fa-warehouse"></i> Quản Lý Tồn Kho</a>
+                         <a class="nav-link {% if request.path == '/quan-ly-hang-hoa/' %}active{% endif %}" href="{% url 'quan_ly_hang_hoa' %}"><i class="fas fa-boxes me-2"></i> Quản Lý Hàng Hóa</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/xuat-theo-mon/' %}active{% endif %}" href="{% url 'xuat_theo_mon' %}"><i class="fas fa-utensils"></i> Xuất Theo Món</a>
@@ -60,9 +60,6 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.path == '/quan-ly-hang-hoa/' %}active{% endif %}" href="{% url 'quan_ly_hang_hoa' %}"><i class="fas fa-boxes me-2"></i> Quản Lý Hàng Hóa</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.path == '/quan-ly-ton-kho/' %}active{% endif %}" href="{% url 'quan_ly_ton_kho' %}"><i class="fas fa-warehouse me-2"></i> Quản Lý Tồn Kho</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.path == '/xuat-theo-mon/' %}active{% endif %}" href="{% url 'xuat_theo_mon' %}"><i class="fas fa-utensils me-2"></i> Xuất Theo Món</a>
