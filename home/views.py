@@ -14,7 +14,8 @@ import json
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 import io
-from django.http import HttpResponse
+from django.http import HttpResponse ,JsonResponse
+from django.views.decorators.http import require_GET
 
 def tinh_tong_ton_kho(ngay):
     tong_ton_list = []
@@ -114,6 +115,498 @@ def tinh_ton_kho_le_tan(hang_hoa_id, ngay_ton):
     return ton_cuoi_ngay_truoc.ton_cuoi_ngay if ton_cuoi_ngay_truoc else 0.0
 
 def quan_ly_hang_hoa(request):
+    """View quản lý hàng hóa với xử lý bulk tồn kho"""
+    if request.method == 'POST':
+        # Xử lý bulk tồn kho hàng hóa
+        if 'bulk_action' in request.POST and request.POST['bulk_action'] == 'save_ton_kho':
+            ngay_ton_str = request.POST.get('ngay_ton')
+            try:
+                ngay_ton = datetime.strptime(ngay_ton_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'success': False, 'message': 'Ngày tồn không hợp lệ.'}, status=400)
+            
+            success_count = 0
+            error_count = 0
+            messages_list = []
+
+            # Lấy tất cả items từ form
+            for key in request.POST:
+                if key.startswith('ton_kho_items['):
+                    try:
+                        index_str = key.split('[')[1].split(']')[0]
+                        index = int(index_str)
+
+                        hang_hoa_id = request.POST.get(f'ton_kho_items[{index}][hang_hoa_id]', None)  # Cho phép None
+                        ton_dau_ngay_input = request.POST.get(f'ton_kho_items[{index}][ton_dau_ngay]', None)
+                        ton_cuoi_ngay_input = request.POST.get(f'ton_kho_items[{index}][ton_cuoi_ngay]', '0')  # Mặc định 0
+                        don_vi = request.POST.get(f'ton_kho_items[{index}][don_vi_nguyen_lieu]', '')
+
+                        # Nếu hang_hoa_id rỗng, bỏ qua dòng này
+                        if not hang_hoa_id:
+                            messages_list.append(f"Dòng {index + 1}: Thiếu ID hàng hóa, bỏ qua dòng này")
+                            continue
+
+                        try:
+                            hang_hoa = HangHoa.objects.get(id=hang_hoa_id)
+                        except HangHoa.DoesNotExist:
+                            error_count += 1
+                            messages_list.append(f"Dòng {index + 1}: Hàng hóa ID {hang_hoa_id} không tồn tại")
+                            continue
+
+                        # Chuyển đổi ton_cuoi_ngay, mặc định 0 nếu không hợp lệ
+                        try:
+                            ton_cuoi_ngay = float(ton_cuoi_ngay_input)
+                            if ton_cuoi_ngay < 0:
+                                ton_cuoi_ngay = 0.0  # Đặt lại về 0 nếu âm
+                                messages_list.append(f"Dòng {index + 1}: Tồn cuối ngày < 0, gán = 0")
+                        except ValueError:
+                            ton_cuoi_ngay = 0.0  # Mặc định 0 nếu không hợp lệ
+                            messages_list.append(f"Dòng {index + 1}: Tồn cuối ngày không hợp lệ, gán = 0")
+
+                        # Tính lại ton_dau_ngay từ logic
+                        ton_dau_tinh_toan, _ = tinh_ton_kho(hang_hoa.id, ngay_ton)
+
+                        # Cập nhật hoặc tạo mới
+                        ton_kho, created = TonKhoHangHoa.objects.update_or_create(
+                            hang_hoa=hang_hoa,
+                            ngay_ton=ngay_ton,
+                            defaults={
+                                'ton_dau_ngay': ton_dau_tinh_toan,
+                                'ton_cuoi_ngay': ton_cuoi_ngay,
+                                'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa or don_vi
+                            }
+                        )
+
+                        if created:
+                            success_count += 1
+                            messages_list.append(f"Tạo mới: {hang_hoa.ten_hang_hoa}")
+                        else:
+                            success_count += 1
+                            messages_list.append(f"Cập nhật: {hang_hoa.ten_hang_hoa}")
+
+                    except Exception as e:
+                        error_count += 1
+                        messages_list.append(f"Dòng {index + 1}: Lỗi không xác định: {str(e)}")
+
+            # Trả về JSON response
+            response_data = {
+                'success': success_count > 0,
+                'message': f'Đã lưu thành công {success_count} bản ghi, {error_count} lỗi' if success_count > 0 or error_count > 0 else 'Không có thay đổi nào được thực hiện',
+                'messages_list': messages_list[:5]  # Giới hạn 5 tin nhắn
+            }
+            return JsonResponse(response_data)
+
+        # Xử lý bulk nhập hàng hóa
+        if 'bulk_action' in request.POST and request.POST['bulk_action'] == 'save_nhap_hang':
+            ngay_nhap_str = request.POST.get('ngay_nhap')
+            try:
+                ngay_nhap = datetime.strptime(ngay_nhap_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'success': False, 'message': 'Ngày nhập không hợp lệ.'}, status=400)
+            
+            success_count = 0
+            error_count = 0
+            messages_list = []
+
+            for key in request.POST:
+                if key.startswith('nhap_hang_items['):
+                    try:
+                        index_str = key.split('[')[1].split(']')[0]
+                        index = int(index_str)
+
+                        hang_hoa_id = request.POST.get(f'nhap_hang_items[{index}][hang_hoa_id]', None)
+                        so_luong_input = request.POST.get(f'nhap_hang_items[{index}][so_luong]', '0')
+                        don_vi = request.POST.get(f'nhap_hang_items[{index}][don_vi_hang_hoa]', '')
+
+                        if not hang_hoa_id:
+                            messages_list.append(f"Dòng {index + 1}: Thiếu ID hàng hóa, bỏ qua dòng này")
+                            continue
+
+                        try:
+                            hang_hoa = HangHoa.objects.get(id=hang_hoa_id)
+                        except HangHoa.DoesNotExist:
+                            error_count += 1
+                            messages_list.append(f"Dòng {index + 1}: Hàng hóa ID {hang_hoa_id} không tồn tại")
+                            continue
+
+                        try:
+                            so_luong = float(so_luong_input)
+                            if so_luong < 0:
+                                so_luong = 0.0
+                                messages_list.append(f"Dòng {index + 1}: Số lượng < 0, gán = 0")
+                        except ValueError:
+                            so_luong = 0.0
+                            messages_list.append(f"Dòng {index + 1}: Số lượng không hợp lệ, gán = 0")
+
+                        if so_luong > 0:  # Chỉ lưu nếu số lượng > 0
+                            nhap_hang, created = NhapHangHoa.objects.update_or_create(
+                                hang_hoa=hang_hoa,
+                                ngay_nhap=ngay_nhap,
+                                defaults={
+                                    'so_luong': so_luong,
+                                    'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa or don_vi
+                                }
+                            )
+
+                            # Cập nhật tồn kho hàng hóa
+                            ton_dau_ngay, ton_cuoi_ngay = tinh_ton_kho(hang_hoa.id, ngay_nhap)
+                            TonKhoHangHoa.objects.update_or_create(
+                                hang_hoa=hang_hoa,
+                                ngay_ton=ngay_nhap,
+                                defaults={
+                                    'ton_dau_ngay': ton_dau_ngay,
+                                    'ton_cuoi_ngay': ton_cuoi_ngay + so_luong,  # Cập nhật tồn cuối
+                                    'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa
+                                }
+                            )
+
+                            if created:
+                                success_count += 1
+                                messages_list.append(f"Tạo mới: {hang_hoa.ten_hang_hoa}")
+                            else:
+                                success_count += 1
+                                messages_list.append(f"Cập nhật: {hang_hoa.ten_hang_hoa}")
+
+                    except Exception as e:
+                        error_count += 1
+                        messages_list.append(f"Dòng {index + 1}: Lỗi không xác định: {str(e)}")
+
+            response_data = {
+                'success': success_count > 0,
+                'message': f'Đã lưu thành công {success_count} bản ghi, {error_count} lỗi',
+                'messages_list': messages_list[:5]
+            }
+            return JsonResponse(response_data)
+
+        # Xử lý bulk tồn kho lễ tân
+        if 'bulk_action' in request.POST and request.POST['bulk_action'] == 'save_ton_kho_le_tan':
+            ngay_ton_str = request.POST.get('ngay_ton')
+            try:
+                ngay_ton = datetime.strptime(ngay_ton_str, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'success': False, 'message': 'Ngày tồn không hợp lệ.'}, status=400)
+            
+            success_count = 0
+            error_count = 0
+            messages_list = []
+
+            for key in request.POST:
+                if key.startswith('ton_kho_le_tan_items['):
+                    try:
+                        index_str = key.split('[')[1].split(']')[0]
+                        index = int(index_str)
+
+                        hang_hoa_id = request.POST.get(f'ton_kho_le_tan_items[{index}][hang_hoa_id]', None)
+                        ton_dau_ngay_input = request.POST.get(f'ton_kho_le_tan_items[{index}][ton_dau_ngay]', None)
+                        ton_cuoi_ngay_input = request.POST.get(f'ton_kho_le_tan_items[{index}][ton_cuoi_ngay]', '0')
+                        don_vi = request.POST.get(f'ton_kho_le_tan_items[{index}][don_vi_hang_hoa]', '')
+
+                        if not hang_hoa_id:
+                            messages_list.append(f"Dòng {index + 1}: Thiếu ID hàng hóa, bỏ qua dòng này")
+                            continue
+
+                        try:
+                            hang_hoa = HangHoa.objects.get(id=hang_hoa_id)
+                        except HangHoa.DoesNotExist:
+                            error_count += 1
+                            messages_list.append(f"Dòng {index + 1}: Hàng hóa ID {hang_hoa_id} không tồn tại")
+                            continue
+
+                        try:
+                            ton_cuoi_ngay = float(ton_cuoi_ngay_input)
+                            if ton_cuoi_ngay < 0:
+                                ton_cuoi_ngay = 0.0
+                                messages_list.append(f"Dòng {index + 1}: Tồn cuối ngày < 0, gán = 0")
+                        except ValueError:
+                            ton_cuoi_ngay = 0.0
+                            messages_list.append(f"Dòng {index + 1}: Tồn cuối ngày không hợp lệ, gán = 0")
+
+                        # Tính lại ton_dau_ngay từ logic
+                        ton_dau_ngay = tinh_ton_kho_le_tan(hang_hoa.id, ngay_ton)
+
+                        ton_kho_le_tan, created = TonKhoLeTan.objects.update_or_create(
+                            hang_hoa=hang_hoa,
+                            ngay_ton=ngay_ton,
+                            defaults={
+                                'ton_dau_ngay': ton_dau_ngay,
+                                'ton_cuoi_ngay': ton_cuoi_ngay,
+                                'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa or don_vi
+                            }
+                        )
+
+                        if created:
+                            success_count += 1
+                            messages_list.append(f"Tạo mới: {hang_hoa.ten_hang_hoa}")
+                        else:
+                            success_count += 1
+                            messages_list.append(f"Cập nhật: {hang_hoa.ten_hang_hoa}")
+
+                    except Exception as e:
+                        error_count += 1
+                        messages_list.append(f"Dòng {index + 1}: Lỗi không xác định: {str(e)}")
+
+            response_data = {
+                'success': success_count > 0,
+                'message': f'Đã lưu thành công {success_count} bản ghi, {error_count} lỗi',
+                'messages_list': messages_list[:5]
+            }
+            return JsonResponse(response_data)
+
+        # Xử lý import Excel
+        if 'excel_file' in request.FILES:
+            import_form = TonKhoHangHoaImportForm(request.POST, request.FILES)
+            if import_form.is_valid():
+                excel_file = request.FILES['excel_file']
+                import_type = request.POST.get('import_type')
+
+                try:
+                    df = pd.read_excel(excel_file)
+                    if df.empty:
+                        messages.error(request, 'File Excel không chứa dữ liệu.')
+                        return redirect('quan_ly_hang_hoa')
+
+                    if import_type == 'ton_kho':
+                        required_columns = ['hang_hoa', 'ngay_ton', 'ton_cuoi_ngay']
+                        if not all(col in df.columns for col in required_columns):
+                            messages.error(request, f'File thiếu cột bắt buộc. Yêu cầu: {", ".join(required_columns)}.')
+                            return redirect('quan_ly_hang_hoa')
+
+                        if 'ngay_ton' in df.columns:
+                            df['ngay_ton'] = pd.to_datetime(df['ngay_ton'], errors='coerce').dt.date
+                            df = df.dropna(subset=['ngay_ton'])
+
+                        for index, row in df.iterrows():
+                            ten_hang_hoa = row.get('hang_hoa')
+                            ngay_ton = row.get('ngay_ton')
+                            ton_cuoi_ngay = row.get('ton_cuoi_ngay')
+
+                            if not all([ten_hang_hoa, ngay_ton, ton_cuoi_ngay is not None]):
+                                messages.error(request, f'Dòng {index + 2}: Thiếu dữ liệu bắt buộc (hang_hoa, ngay_ton, ton_cuoi_ngay).')
+                                continue
+
+                            try:
+                                if pd.isna(ngay_ton):
+                                    raise ValueError("Ngày không hợp lệ")
+                                ngay_ton = ngay_ton
+
+                                hang_hoa = HangHoa.objects.filter(ten_hang_hoa=ten_hang_hoa).first()
+                                if not hang_hoa:
+                                    messages.error(request, f'Dòng {index + 2}: Hàng hóa "{ten_hang_hoa}" không tồn tại.')
+                                    continue
+
+                                ton_dau_ngay, _ = tinh_ton_kho(hang_hoa.id, ngay_ton)
+                                ton_cuoi_ngay = float(ton_cuoi_ngay) if pd.notna(ton_cuoi_ngay) else ton_dau_ngay
+
+                                TonKhoHangHoa.objects.update_or_create(
+                                    hang_hoa=hang_hoa,
+                                    ngay_ton=ngay_ton,
+                                    defaults={
+                                        'ton_dau_ngay': ton_dau_ngay,
+                                        'ton_cuoi_ngay': ton_cuoi_ngay,
+                                        'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa
+                                    }
+                                )
+                            except ValueError as e:
+                                messages.error(request, f'Dòng {index + 2}: Lỗi định dạng ngày hoặc số: {str(e)}')
+                                continue
+                            except Exception as e:
+                                messages.error(request, f'Dòng {index + 2}: Lỗi không xác định: {str(e)}')
+                                continue
+                        messages.success(request, 'Nhập dữ liệu tồn kho từ Excel thành công!')
+
+                    elif import_type == 'nhap_hang_hoa':
+                        required_columns = ['hang_hoa', 'ngay_nhap', 'don_vi_hang_hoa', 'so_luong']
+                        if not all(col in df.columns for col in required_columns):
+                            messages.error(request, f'File thiếu cột bắt buộc. Yêu cầu: {", ".join(required_columns)}.')
+                            return redirect('quan_ly_hang_hoa')
+
+                        if 'ngay_nhap' in df.columns:
+                            df['ngay_nhap'] = pd.to_datetime(df['ngay_nhap'], errors='coerce').dt.date
+                            df = df.dropna(subset=['ngay_nhap'])
+                        else:
+                            messages.error(request, 'Cột "ngay_nhap" không tồn tại trong file Excel.')
+                            return redirect('quan_ly_hang_hoa')
+
+                        for index, row in df.iterrows():
+                            ten_hang_hoa = row.get('hang_hoa')
+                            ngay_nhap = row.get('ngay_nhap')
+                            don_vi_hang_hoa = row.get('don_vi_hang_hoa')
+                            so_luong = row.get('so_luong')
+
+                            if not all([ten_hang_hoa, ngay_nhap, don_vi_hang_hoa, so_luong is not None]):
+                                messages.error(request, f'Dòng {index + 2}: Thiếu dữ liệu bắt buộc (hang_hoa, ngay_nhap, don_vi_hang_hoa, so_luong).')
+                                continue
+
+                            try:
+                                if pd.isna(ngay_nhap):
+                                    raise ValueError("Ngày không hợp lệ!")
+                                ngay_nhap = ngay_nhap
+
+                                hang_hoa = HangHoa.objects.filter(ten_hang_hoa=ten_hang_hoa).first()
+                                if not hang_hoa:
+                                    messages.error(request, f'Dòng {index + 2}: Hàng hóa "{ten_hang_hoa}" không tồn tại.')
+                                    continue
+
+                                so_luong = float(so_luong) if pd.notna(so_luong) else 0
+                                if so_luong <= 0:
+                                    messages.error(request, f'Dòng {index + 2}: Số lượng phải lớn hơn 0.')
+                                    continue
+
+                                NhapHangHoa.objects.update_or_create(
+                                    hang_hoa=hang_hoa,
+                                    ngay_nhap=ngay_nhap,
+                                    defaults={
+                                        'don_vi_hang_hoa': don_vi_hang_hoa,
+                                        'so_luong': so_luong
+                                    }
+                                )
+
+                                ton_dau_ngay, ton_cuoi_ngay = tinh_ton_kho(hang_hoa.id, ngay_nhap)
+                                existing_ton_kho = TonKhoHangHoa.objects.filter(
+                                    hang_hoa=hang_hoa,
+                                    ngay_ton=ngay_nhap
+                                ).first()
+                                if existing_ton_kho:
+                                    existing_ton_kho.ton_dau_ngay = ton_dau_ngay
+                                    existing_ton_kho.ton_cuoi_ngay = ton_cuoi_ngay + so_luong
+                                    existing_ton_kho.save()
+                                else:
+                                    TonKhoHangHoa.objects.create(
+                                        hang_hoa=hang_hoa,
+                                        ngay_ton=ngay_nhap,
+                                        ton_dau_ngay=ton_dau_ngay,
+                                        ton_cuoi_ngay=ton_dau_ngay + so_luong,
+                                        don_vi_hang_hoa=don_vi_hang_hoa
+                                    )
+                            except ValueError as e:
+                                messages.error(request, f'Dòng {index + 2}: Lỗi định dạng ngày hoặc số: {str(e)}')
+                                continue
+                            except Exception as e:
+                                messages.error(request, f'Dòng {index + 2}: Lỗi không xác định: {str(e)}')
+                                continue
+                        messages.success(request, 'Nhập dữ liệu hàng hóa từ Excel thành công!')
+
+                    elif import_type == 'ton_kho_le_tan':
+                        required_columns = ['hang_hoa', 'ngay_ton', 'ton_cuoi_ngay']
+                        if not all(col in df.columns for col in required_columns):
+                            messages.error(request, f'File thiếu cột bắt buộc. Yêu cầu: {", ".join(required_columns)}.')
+                            return redirect('quan_ly_hang_hoa')
+
+                        if 'ngay_ton' in df.columns:
+                            df['ngay_ton'] = pd.to_datetime(df['ngay_ton'], errors='coerce').dt.date
+                            df = df.dropna(subset=['ngay_ton'])
+
+                        for index, row in df.iterrows():
+                            ten_hang_hoa = row.get('hang_hoa')
+                            ngay_ton = row.get('ngay_ton')
+                            ton_cuoi_ngay = row.get('ton_cuoi_ngay')
+
+                            if not all([ten_hang_hoa, ngay_ton, ton_cuoi_ngay is not None]):
+                                messages.error(request, f'Dòng {index + 2}: Thiếu dữ liệu bắt buộc (hang_hoa, ngay_ton, ton_cuoi_ngay).')
+                                continue
+
+                            try:
+                                if pd.isna(ngay_ton):
+                                    raise ValueError("Ngày không hợp lệ")
+                                ngay_ton = ngay_ton
+
+                                hang_hoa = HangHoa.objects.filter(ten_hang_hoa=ten_hang_hoa).first()
+                                if not hang_hoa:
+                                    messages.error(request, f'Dòng {index + 2}: Hàng hóa "{ten_hang_hoa}" không tồn tại.')
+                                    continue
+
+                                ton_dau_ngay = tinh_ton_kho_le_tan(hang_hoa.id, ngay_ton)
+                                ton_cuoi_ngay = float(ton_cuoi_ngay) if pd.notna(ton_cuoi_ngay) else ton_dau_ngay
+
+                                TonKhoLeTan.objects.update_or_create(
+                                    hang_hoa=hang_hoa,
+                                    ngay_ton=ngay_ton,
+                                    defaults={
+                                        'ton_dau_ngay': ton_dau_ngay,
+                                        'ton_cuoi_ngay': ton_cuoi_ngay,
+                                        'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa
+                                    }
+                                )
+                            except ValueError as e:
+                                messages.error(request, f'Dòng {index + 2}: Lỗi định dạng ngày hoặc số: {str(e)}')
+                                continue
+                            except Exception as e:
+                                messages.error(request, f'Dòng {index + 2}: Lỗi không xác định: {str(e)}')
+                                continue
+                        messages.success(request, 'Nhập dữ liệu tồn kho lễ tân từ Excel thành công!')
+
+                    else:
+                        messages.error(request, 'Loại nhập không hợp lệ.')
+                        return redirect('quan_ly_hang_hoa')
+
+                except Exception as e:
+                    messages.error(request, f'Lỗi khi đọc file Excel: {str(e)}')
+                return redirect('quan_ly_hang_hoa')
+            else:
+                messages.error(request, 'Lỗi khi nhập file Excel. Vui lòng kiểm tra định dạng.')
+        
+        # Xử lý form nhập hàng hóa
+        elif 'nhap_hang_hoa_form' in request.POST:
+            nhap_hang_hoa_form = NhapHangHoaForm(request.POST)
+            if nhap_hang_hoa_form.is_valid():
+                nhap_hang_hoa = nhap_hang_hoa_form.save(commit=False)
+                if nhap_hang_hoa.so_luong <= 0:
+                    messages.error(request, 'Số lượng phải lớn hơn 0.')
+                    return redirect('quan_ly_hang_hoa')
+                nhap_hang_hoa.don_vi_hang_hoa = nhap_hang_hoa.hang_hoa.don_vi_hang_hoa
+                nhap_hang_hoa.save()
+                existing_ton_kho = TonKhoHangHoa.objects.filter(
+                    hang_hoa=nhap_hang_hoa.hang_hoa,
+                    ngay_ton=nhap_hang_hoa.ngay_nhap
+                ).first()
+                ton_dau_ngay, ton_cuoi_ngay = tinh_ton_kho(nhap_hang_hoa.hang_hoa.id, nhap_hang_hoa.ngay_nhap)
+                if existing_ton_kho:
+                    existing_ton_kho.ton_dau_ngay = ton_dau_ngay
+                    existing_ton_kho.ton_cuoi_ngay = ton_cuoi_ngay + nhap_hang_hoa.so_luong
+                    existing_ton_kho.save()
+                else:
+                    TonKhoHangHoa.objects.create(
+                        hang_hoa=nhap_hang_hoa.hang_hoa,
+                        ngay_ton=nhap_hang_hoa.ngay_nhap,
+                        ton_dau_ngay=ton_dau_ngay,
+                        ton_cuoi_ngay=ton_dau_ngay + nhap_hang_hoa.so_luong,
+                        don_vi_hang_hoa=nhap_hang_hoa.hang_hoa.don_vi_hang_hoa
+                    )
+                messages.success(request, 'Nhập hàng hóa thành công!')
+                return redirect('quan_ly_hang_hoa')
+            else:
+                messages.error(request, 'Lỗi khi nhập hàng hóa. Vui lòng kiểm tra lại.')
+        
+        # Xử lý form tồn kho lễ tân
+        elif 'ton_kho_le_tan_form' in request.POST:
+            ton_kho_le_tan_form = TonKhoLeTanForm(request.POST)
+            if ton_kho_le_tan_form.is_valid():
+                ton_kho = ton_kho_le_tan_form.save(commit=False)
+                ton_dau_ngay = tinh_ton_kho_le_tan(ton_kho.hang_hoa.id, ton_kho.ngay_ton)
+                ton_kho.ton_dau_ngay = ton_dau_ngay
+                ton_kho.ton_cuoi_ngay = ton_kho_le_tan_form.cleaned_data['ton_cuoi_ngay']
+                ton_kho.don_vi_hang_hoa = ton_kho.hang_hoa.don_vi_hang_hoa
+                ton_kho.save()
+                messages.success(request, 'Thêm tồn kho lễ tân thành công!')
+                return redirect('quan_ly_hang_hoa')
+            else:
+                messages.error(request, f'Lỗi khi thêm tồn kho lễ tân: {ton_kho_le_tan_form.errors.as_text()}')
+        
+        # Xử lý form tồn kho hàng hóa
+        else:
+            ton_kho_form = TonKhoHangHoaForm(request.POST)
+            if ton_kho_form.is_valid():
+                ton_kho = ton_kho_form.save(commit=False)
+                ton_dau_ngay, ton_cuoi_ngay = tinh_ton_kho(ton_kho.hang_hoa.id, ton_kho.ngay_ton)
+                ton_kho.ton_dau_ngay = ton_dau_ngay
+                ton_kho.ton_cuoi_ngay = ton_kho_form.cleaned_data['ton_cuoi_ngay']
+                ton_kho.don_vi_hang_hoa = ton_kho.hang_hoa.don_vi_hang_hoa
+                ton_kho.save()
+                messages.success(request, 'Thêm tồn kho thành công!')
+                return redirect('quan_ly_hang_hoa')
+            else:
+                messages.error(request, 'Lỗi khi thêm tồn kho. Vui lòng kiểm tra lại.')
+    # Phần còn lại của view (không thay đổi)
     ton_kho_form = TonKhoHangHoaForm()
     import_form = TonKhoHangHoaImportForm()
     nhap_hang_hoa_form = NhapHangHoaForm()
@@ -1326,3 +1819,95 @@ def delete_ton_kho_by_date_range(request):
             messages.error(request, f'Lỗi khi xóa bản ghi tồn kho: {str(e)}')
         return redirect('quan_ly_hang_hoa')
     return redirect('quan_ly_hang_hoa')
+
+@require_GET
+def get_ton_kho_le_tan_data(request):
+    """API lấy dữ liệu tồn kho lễ tân theo ngày"""
+    ngay_ton_str = request.GET.get('ngay_ton')
+    try:
+        ngay_ton = datetime.strptime(ngay_ton_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'success': False, 'message': 'Ngày không hợp lệ'}, status=400)
+    
+    hang_hoa_list = HangHoa.objects.all()
+    data = []
+    
+    for hang_hoa in hang_hoa_list:
+        ton_dau_ngay = tinh_ton_kho_le_tan(hang_hoa.id, ngay_ton)
+        
+        existing_ton_kho = TonKhoLeTan.objects.filter(
+            hang_hoa=hang_hoa,
+            ngay_ton=ngay_ton
+        ).first()
+        
+        data.append({
+            'hang_hoa_id': hang_hoa.id,
+            'ten_hang_hoa': hang_hoa.ten_hang_hoa,
+            'ton_dau_ngay': float(ton_dau_ngay),
+            'ton_cuoi_ngay': float(existing_ton_kho.ton_cuoi_ngay) if existing_ton_kho else None,
+            'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa or 'Không xác định'
+        })
+    
+    return JsonResponse({'success': True, 'data': data})
+
+
+@require_GET
+def get_hang_hoa_list(request):
+    """API lấy danh sách hàng hóa"""
+    hang_hoa_list = HangHoa.objects.all().values(
+        'id', 'ten_hang_hoa', 'don_vi_nguyen_lieu'
+    )
+    
+    ngay_ton_str = request.GET.get('ngay_ton')
+    try:
+        ngay_ton = datetime.strptime(ngay_ton_str, '%Y-%m-%d').date()
+    except ValueError:
+        from datetime import date
+        ngay_ton = date.today()
+    
+    data = []
+    for hh in hang_hoa_list:
+        ton_dau_ngay, _ = tinh_ton_kho(hh['id'], ngay_ton)
+        data.append({
+            'id': hh['id'],
+            'ten_hang_hoa': hh['ten_hang_hoa'],
+            'don_vi_nguyen_lieu': hh['don_vi_nguyen_lieu'] or 'Không xác định',
+            'ton_dau_ngay': float(ton_dau_ngay)
+        })
+    
+    return JsonResponse(data, safe=False)
+
+# THÊM VÀO CUỐI views.py
+@require_GET
+def get_hang_hoa_detail(request, id):
+    """API lấy chi tiết một hàng hóa"""
+    try:
+        hang_hoa = HangHoa.objects.get(id=id)
+        
+        # Tính tồn đầu ngày cho ngày được chọn
+        ngay_ton_str = request.GET.get('ngay_ton')
+        try:
+            ngay_ton = datetime.strptime(ngay_ton_str, '%Y-%m-%d').date()
+        except ValueError:
+            from datetime import date
+            ngay_ton = date.today()
+        
+        ton_dau_ngay, _ = tinh_ton_kho(hang_hoa.id, ngay_ton)
+        
+        data = {
+            'success': True,
+            'data': {
+                'id': hang_hoa.id,
+                'ten_hang_hoa': hang_hoa.ten_hang_hoa,
+                'don_vi_nguyen_lieu': hang_hoa.don_vi_nguyen_lieu or 'Không xác định',
+                'don_vi_hang_hoa': hang_hoa.don_vi_hang_hoa or 'Không xác định',
+                'dinh_luong': float(hang_hoa.dinh_luong) if hang_hoa.dinh_luong else 1,
+                'ton_dau_ngay': float(ton_dau_ngay)
+            }
+        }
+        return JsonResponse(data)
+        
+    except HangHoa.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Hàng hóa không tồn tại'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

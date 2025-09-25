@@ -5,625 +5,994 @@
 {% block title %}Quản Lý Hàng Hóa - Quản lý hàng hóa{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Quản Lý Hàng Hóa</h1>
 
-{% if messages %}
-{% for message in messages %}
-<div class="alert alert-{% if message.tags == 'success' %}success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
-    {{ message }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-{% endfor %}
-{% endif %}
+<style>
+     .custom-modal {
+        display: none; /* Ẩn mặc định */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Lớp phủ nền mờ */
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
 
-<!-- Thanh navigation ngang -->
-<ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="ton-kho-tab" data-bs-toggle="tab" data-bs-target="#ton-kho" type="button" role="tab" aria-controls="ton-kho" aria-selected="true">Tồn Kho</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="nhap-hang-tab" data-bs-toggle="tab" data-bs-target="#nhap-hang" type="button" role="tab" aria-controls="nhap-hang" aria-selected="false">Nhập Hàng</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="kho-le-tan-tab" data-bs-toggle="tab" data-bs-target="#kho-le-tan" type="button" role="tab" aria-controls="kho-le-tan" aria-selected="false">Kho Lễ Tân</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="kho-tong-tab" data-bs-toggle="tab" data-bs-target="#kho-tong" type="button" role="tab" aria-controls="kho-tong" aria-selected="false">Kho Tổng</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="luong-dung-tab" data-bs-toggle="tab" data-bs-target="#luong-dung" type="button" role="tab" aria-controls="luong-dung" aria-selected="false">Lượng Dùng</button>
-    </li>
-</ul>
+    .custom-modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        width: 400px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
 
-<!-- Nội dung các tab -->
-<div class="tab-content" id="myTabContent">
-    <!-- Tab Tồn Kho -->
-    <div class="tab-pane fade show active" id="ton-kho" role="tabpanel" aria-labelledby="ton-kho-tab">
-        <!-- Form thêm mới tồn kho -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Thêm Tồn Kho Mới</h5>
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">{{ ton_kho_form.hang_hoa.label }}</label>
-                            <select name="hang_hoa" class="form-control" id="id_hang_hoa_ton_kho">
-                                <option value="" {% if not ton_kho_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
-                                {% for hang_hoa in ton_kho_form.hang_hoa.field.queryset %}
-                                <option value="{{ hang_hoa.id }}"
-                                        data-don-vi="{{ hang_hoa.don_vi_hang_hoa }}"
-                                        data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
-                                        {% if ton_kho_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ hang_hoa.ten_hang_hoa }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            {% if ton_kho_form.hang_hoa.errors %}
-                            <div class="text-danger">{{ ton_kho_form.hang_hoa.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">{{ ton_kho_form.ngay_ton.label }}</label>
-                            {{ ton_kho_form.ngay_ton|add_class:"form-control" }}
-                            {% if ton_kho_form.ngay_ton.errors %}
-                            <div class="text-danger">{{ ton_kho_form.ngay_ton.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">{{ ton_kho_form.ton_dau_ngay.label }}</label>
-                            {{ ton_kho_form.ton_dau_ngay|add_class:"form-control" }}
-                            <small class="text-muted">(Tự động tính)</small>
-                            {% if ton_kho_form.ton_dau_ngay.errors %}
-                            <div class="text-danger">{{ ton_kho_form.ton_dau_ngay.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">{{ ton_kho_form.ton_cuoi_ngay.label }}</label>
-                            {{ ton_kho_form.ton_cuoi_ngay|add_class:"form-control" }}
-                            {% if ton_kho_form.ton_cuoi_ngay.errors %}
-                            <div class="text-danger">{{ ton_kho_form.ton_cuoi_ngay.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Đơn vị nguyên liệu</label>
-                            <input type="text" id="don_vi_nguyen_lieu_display" class="form-control" readonly>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Thêm Tồn Kho</button>
-                </form>
-            </div>
-        </div>
+    .custom-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
 
-        <!-- Form nhập tồn kho từ Excel -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Nhập Tồn Kho từ Excel</h5>
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="hidden" name="import_type" value="ton_kho">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ import_form.excel_file.label }}</label>
-                            {{ import_form.excel_file }}
-                            <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_ton, ton_cuoi_ngay</small>
-                            {% if import_form.excel_file.errors %}
-                            <div class="text-danger">{{ import_form.excel_file.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
+    .custom-modal-header h5 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #0d6efd;
+    }
 
-        <!-- Danh sách tồn kho với tìm kiếm và lọc -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">Danh Sách Tồn Kho</h5>
-                    <!-- Form xóa theo khoảng ngày -->
-                    <form action="{% url 'delete_ton_kho_by_date_range' %}" method="post" class="d-flex align-items-center" onsubmit="return confirm('Bạn có chắc muốn xóa các bản ghi tồn kho trong khoảng ngày này?')">
-                        {% csrf_token %}
-                        <div class="me-2">
-                            <label class="form-label">Từ ngày</label>
-                            <input type="date" name="ngay_bat_dau" class="form-control" required>
-                        </div>
-                        <div class="me-2">
-                            <label class="form-label">Đến ngày</label>
-                            <input type="date" name="ngay_ket_thuc" class="form-control" required>
-                        </div>
-                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Theo Ngày</button>
-                    </form>
+    .custom-modal-close {
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: #666;
+    }
+
+    .custom-modal-close:hover {
+        color: #000;
+    }
+
+    .custom-modal-body {
+        margin-bottom: 15px;
+    }
+
+    .custom-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .custom-modal-footer .btn {
+        padding: 5px 15px;
+        font-size: 0.9rem;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Quản Lý Hàng Hóa</h2>
+
+            {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-                <!-- Thanh tìm kiếm và bộ lọc -->
-                <form method="get" class="mb-3">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Tìm kiếm theo tên hàng hóa</label>
-                            <input type="text" name="search" class="form-control" placeholder="Nhập tên hàng hóa" value="{{ search_query }}">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">{{ filter_form.ngay_bat_dau.label }}</label>
-                            {{ filter_form.ngay_bat_dau }}
-                            {% if filter_form.ngay_bat_dau.errors %}
-                            <div class="text-danger">{{ filter_form.ngay_bat_dau.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">{{ filter_form.ngay_ket_thuc.label }}</label>
-                            {{ filter_form.ngay_ket_thuc }}
-                            {% if filter_form.ngay_ket_thuc.errors %}
-                            <div class="text-danger">{{ filter_form.ngay_ket_thuc.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-2 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
-                        </div>
-                    </div>
-                </form>
-                <!-- Bảng danh sách -->
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Tên Hàng Hóa</th>
-                            <th>Ngày Tồn</th>
-                            <th>Tồn Đầu Ngày</th>
-                            <th>Tồn Cuối Ngày</th>
-                            <th>Đơn Vị Nguyên Liệu</th>
-                            <th>Thao Tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ton_kho in ton_kho_list %}
-                        <tr>
-                            <td>{{ ton_kho.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
-                            <td>{{ ton_kho.ngay_ton }}</td>
-                            <td>{{ ton_kho.ton_dau_ngay|floatformat:2 }}</td>
-                            <td>{{ ton_kho.ton_cuoi_ngay|floatformat:2 }}</td>
-                            <td>{{ ton_kho.hang_hoa.don_vi_nguyen_lieu|default:"Không xác định" }}</td>
-                            <td>
-                                <a href="{% url 'edit_ton_kho_hang_hoa' ton_kho.id %}?next={% url 'quan_ly_hang_hoa' %}" class="btn btn-sm btn-outline-warning">
-                                    <i class="fas fa-edit me-1"></i> Sửa
-                                </a>
-                                <form action="{% url 'delete_ton_kho_hang_hoa' ton_kho.id %}" method="post" style="display:inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="next" value="{% url 'quan_ly_hang_hoa' %}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa?')">
-                                        <i class="fas fa-trash me-1"></i> Xóa
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center">Chưa có dữ liệu tồn kho</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            {% endfor %}
+            {% endif %}
         </div>
     </div>
 
-    <!-- Tab Nhập Hàng -->
-    <div class="tab-pane fade" id="nhap-hang" role="tabpanel" aria-labelledby="nhap-hang-tab">
-        <!-- Form nhập hàng hóa -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Nhập Hàng Hóa</h5>
-                <form method="post" name="nhap_hang_hoa_form">
-                    {% csrf_token %}
-                    <input type="hidden" name="nhap_hang_hoa_form">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ nhap_hang_hoa_form.hang_hoa.label }}</label>
-                            <select name="hang_hoa" class="form-control" id="id_hang_hoa">
-                                <option value="" {% if not nhap_hang_hoa_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
-                                {% for hang_hoa in nhap_hang_hoa_form.hang_hoa.field.queryset %}
-                                <option value="{{ hang_hoa.id }}"
-                                        data-don-vi="{{ hang_hoa.don_vi_hang_hoa }}"
-                                        data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
-                                        {% if nhap_hang_hoa_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ hang_hoa.ten_hang_hoa }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            {% if nhap_hang_hoa_form.hang_hoa.errors %}
-                            <div class="text-danger">{{ nhap_hang_hoa_form.hang_hoa.errors }}</div>
-                            {% endif %}
+    <!-- Navigation tabs -->
+    <ul class="nav nav-tabs mb-4" id="inventoryTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="ton-kho-tab" data-bs-toggle="tab" href="#ton-kho" role="tab">Tồn Kho</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="nhap-hang-tab" data-bs-toggle="tab" href="#nhap-hang" role="tab">Nhập Hàng</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="kho-le-tan-tab" data-bs-toggle="tab" href="#kho-le-tan" role="tab">Kho Lễ Tân</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="kho-tong-tab" data-bs-toggle="tab" href="#kho-tong" role="tab">Kho Tổng</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="luong-dung-tab" data-bs-toggle="tab" href="#luong-dung" role="tab">Lượng Dùng</a>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="inventoryTabContent">
+        <!-- Tab Tồn Kho -->
+        <div class="tab-pane fade show active" id="ton-kho" role="tabpanel">
+            <div class="row">
+                <!-- Thêm Tồn Kho Mới - Dạng Bảng Excel -->
+                <div class="col-12 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-plus-circle me-2"></i>Thêm Tồn Kho Mới (Dạng Bảng)
+                            </h5>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ nhap_hang_hoa_form.ngay_nhap.label }}</label>
-                            {{ nhap_hang_hoa_form.ngay_nhap|add_class:"form-control" }}
-                            {% if nhap_hang_hoa_form.ngay_nhap.errors %}
-                            <div class="text-danger">{{ nhap_hang_hoa_form.ngay_nhap.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ nhap_hang_hoa_form.so_luong.label }}</label>
-                            {{ nhap_hang_hoa_form.so_luong|add_class:"form-control" }}
-                            {% if nhap_hang_hoa_form.so_luong.errors %}
-                            <div class="text-danger">{{ nhap_hang_hoa_form.so_luong.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Đơn vị hàng hóa</label>
-                            <input type="text" id="don_vi_hang_hoa_display" class="form-control" readonly>
+                        <div class="card-body">
+                            <form method="post" id="ton_kho_bulk_form">
+                                {% csrf_token %}
+                                
+                                <!-- Ô chọn ngày tồn -->
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label for="id_ngay_ton" class="form-label fw-bold">
+                                            {{ ton_kho_form.ngay_ton.label }}
+                                        </label>
+                                        <input type="date" class="form-control" id="id_ngay_ton" name="ngay_ton" required>
+                                        {% if ton_kho_form.ngay_ton.errors %}
+                                            <div class="text-danger small mt-1">{{ ton_kho_form.ngay_ton.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-9 d-flex align-items-end">
+                                        <button type="button" class="btn btn-outline-primary me-2" onclick="loadTonKhoData()">
+                                            <i class="fas fa-sync-alt me-1"></i>Tải Dữ Liệu
+                                        </button>
+                                        <button type="button" class="btn btn-success me-2" id="save_bulk_btn" disabled>
+                                            <i class="fas fa-save me-1"></i>Lưu Tồn Kho
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="clearTable()">
+                                            <i class="fas fa-times me-1"></i>Xóa Dữ Liệu
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Bảng nhập liệu dạng Excel -->
+                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+                                    <table class="table table-bordered table-sm table-hover mb-0" id="ton_kho_table" style="margin-bottom: 0;">
+                                        <thead class="table-light sticky-top" style="top: 0; z-index: 10; background-color: #f8f9fa;">
+                                            <tr>
+                                                <th style="width: 50px; min-width: 50px; background-color: #e9ecef;" class="text-center align-middle border-bottom-0">
+                                                    <i class="fas fa-list-ol"></i><br><small>STT</small>
+                                                </th>
+                                                <th style="min-width: 250px; background-color: #e9ecef;" class="text-center align-middle border-bottom-0">
+                                                    <i class="fas fa-box"></i><br><small>Tên Hàng Hóa</small>
+                                                </th>
+                                                <th style="width: 130px; min-width: 130px; background-color: #d4edda;" class="text-center align-middle border-bottom-0">
+                                                    <i class="fas fa-calculator"></i><br><small>Tồn Đầu Ngày<br>(Tự động)</small>
+                                                </th>
+                                                <th style="width: 130px; min-width: 130px; background-color: #fff3cd;" class="text-center align-middle border-bottom-0">
+                                                    <i class="fas fa-edit"></i><br><small>Tồn Cuối Ngày</small>
+                                                </th>
+                                                <th style="width: 100px; min-width: 100px; background-color: #f8f9fa;" class="text-center align-middle border-bottom-0">
+                                                    <i class="fas fa-balance-scale"></i><br><small>Đơn Vị</small>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="ton_kho_tbody">
+                                            <tr class="table-secondary">
+                                                <td colspan="5" class="text-center py-4">
+                                                    <i class="fas fa-info-circle text-muted me-2"></i>
+                                                    <span class="text-muted">Nhấn "Tải Dữ Liệu" để hiển thị danh sách hàng hóa</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Thông tin thống kê -->
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fas fa-chart-bar text-info me-2"></i>Thống Kê
+                                                </h6>
+                                                <div class="row text-center">
+                                                    <div class="col-4">
+                                                        <div class="fw-bold text-primary fs-5" id="total_items">0</div>
+                                                        <small class="text-muted">Tổng HH</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <div class="fw-bold text-success fs-5" id="edited_count">0</div>
+                                                        <small class="text-muted">Đã sửa</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <div class="fw-bold text-warning fs-5" id="ton_tong">0.00</div>
+                                                        <small class="text-muted">Tổng tồn</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-lightbulb me-2"></i>
+                                            <strong>Hướng dẫn:</strong> 
+                                            <ul class="mb-0">
+                                                <li>Chọn ngày tồn → Tải dữ liệu → Nhập tồn cuối ngày</li>
+                                                <li>Cột <strong style="color: #28a745;">Tồn đầu ngày</strong> tự động tính</li>
+                                                <li>Cột <strong style="color: #ffc107;">Tồn cuối ngày</strong> có thể nhập/sửa</li>
+                                                <li>Dòng màu vàng = đã chỉnh sửa</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Ẩn các input để gửi dữ liệu -->
+                                <div style="display: none;">
+                                    {% for field in ton_kho_form %}
+                                        {{ field }}
+                                    {% endfor %}
+                                </div>
+                            </form>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-truck-loading me-2"></i>Nhập Hàng Hóa</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Form nhập hàng hóa từ Excel -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Nhập Hàng Hóa từ Excel</h5>
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="hidden" name="import_type" value="nhap_hang_hoa">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ import_form.excel_file.label }}</label>
-                            {{ import_form.excel_file }}
-                            <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_nhap, don_vi_hang_hoa, so_luong</small>
-                            {% if import_form.excel_file.errors %}
-                            <div class="text-danger">{{ import_form.excel_file.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Danh sách nhập hàng hóa -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">Lịch Sử Nhập Hàng</h5>
-                    <form action="{% url 'delete_all_nhap_hang' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi nhập hàng?')">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
-                    </form>
                 </div>
-                <!-- Thanh lọc theo ngày nhập -->
-                <form method="get" class="mb-3">
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Ngày nhập bắt đầu</label>
-                            <input type="date" name="ngay_nhap_bat_dau" class="form-control" value="{{ ngay_nhap_bat_dau }}">
+
+                <!-- Nhập Tồn Kho từ Excel -->
+                <div class="col-12 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-file-excel me-2"></i>Nhập Tồn Kho từ Excel
+                            </h5>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Ngày nhập kết thúc</label>
-                            <input type="date" name="ngay_nhap_ket_thuc" class="form-control" value="{{ ngay_nhap_ket_thuc }}">
-                        </div>
-                        <div class="col-md-2 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
+                        <div class="card-body">
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ import_form.excel_file.label }}</label>
+                                            {{ import_form.excel_file }}
+                                            <div class="form-text">
+                                                Định dạng: .xlsx, các cột: <code>hang_hoa</code>, <code>ngay_ton</code>, <code>ton_cuoi_ngay</code>
+                                            </div>
+                                            {% if import_form.excel_file.errors %}
+                                                <div class="text-danger">{{ import_form.excel_file.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-success w-100">
+                                            <i class="fas fa-upload me-2"></i>Nhập File
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                </form>
-                <!-- Bảng danh sách -->
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Tên Hàng Hóa</th>
-                            <th>Ngày Nhập</th>
-                            <th>Số Lượng</th>
-                            <th>Đơn Vị</th>
-                            <th>Thao Tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for nhap in nhap_hang_hoa_list %}
-                        <tr>
-                            <td>{{ nhap.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
-                            <td>{{ nhap.ngay_nhap }}</td>
-                            <td>{{ nhap.so_luong|floatformat:2 }}</td>
-                            <td>{{ nhap.don_vi_hang_hoa|default:"Không xác định" }}</td>
-                            <td>
-                                <form action="{% url 'delete_nhap_hang_hoa' nhap.id %}" method="post" style="display:inline;">
+                </div>
+
+                <!-- Danh Sách Tồn Kho -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-list me-2"></i>Danh Sách Tồn Kho
+                            </h5>
+                            <div>
+                                <form method="post" class="d-inline" style="display: none;">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa bản ghi nhập hàng này?')">
-                                        <i class="fas fa-trash me-1"></i> Xóa
+                                    <button type="submit" class="btn btn-outline-light btn-sm" name="delete_all_ton_kho">
+                                        <i class="fas fa-trash me-1"></i>Xóa Tất Cả
                                     </button>
                                 </form>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center">Chưa có bản ghi nhập hàng</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Filter -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" placeholder="Tìm kiếm theo tên hàng hóa" 
+                                               name="search" value="{{ search_query|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    {{ filter_form.ngay_bat_dau.label_tag }}
+                                    {{ filter_form.ngay_bat_dau }}
+                                    {% if filter_form.ngay_bat_dau.errors %}
+                                        <div class="text-danger">{{ filter_form.ngay_bat_dau.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ filter_form.ngay_ket_thuc.label_tag }}
+                                    {{ filter_form.ngay_ket_thuc }}
+                                    {% if filter_form.ngay_ket_thuc.errors %}
+                                        <div class="text-danger">{{ filter_form.ngay_ket_thuc.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
 
-    <!-- Tab Kho Lễ Tân -->
-    <div class="tab-pane fade" id="kho-le-tan" role="tabpanel" aria-labelledby="kho-le-tan-tab">
-        <!-- Form thêm mới tồn kho lễ tân -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Thêm Tồn Kho Lễ Tân Mới</h5>
-                <form method="post" name="ton_kho_le_tan_form">
-                    {% csrf_token %}
-                    <input type="hidden" name="ton_kho_le_tan_form" value="true">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">{{ ton_kho_le_tan_form.hang_hoa.label }}</label>
-                            <select name="hang_hoa" class="form-control" id="id_hang_hoa_le_tan">
-                                <option value="" {% if not ton_kho_le_tan_form.hang_hoa.value %}selected{% endif %}>--- Chọn hàng hóa ---</option>
-                                {% for hang_hoa in ton_kho_le_tan_form.hang_hoa.field.queryset %}
-                                <option value="{{ hang_hoa.id }}"
-                                        data-don-vi-hang-hoa="{{ hang_hoa.don_vi_hang_hoa }}"
-                                        data-don-vi-nguyen-lieu="{{ hang_hoa.don_vi_nguyen_lieu }}"
-                                        {% if ton_kho_le_tan_form.hang_hoa.value == hang_hoa.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ hang_hoa.ten_hang_hoa }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            {% if ton_kho_le_tan_form.hang_hoa.errors %}
-                            <div class="text-danger">{{ ton_kho_le_tan_form.hang_hoa.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">{{ ton_kho_le_tan_form.ngay_ton.label }}</label>
-                            {{ ton_kho_le_tan_form.ngay_ton|add_class:"form-control" }}
-                            {% if ton_kho_le_tan_form.ngay_ton.errors %}
-                            <div class="text-danger">{{ ton_kho_le_tan_form.ngay_ton.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">{{ ton_kho_le_tan_form.ton_dau_ngay.label }}</label>
-                            {{ ton_kho_le_tan_form.ton_dau_ngay|add_class:"form-control" }}
-                            <small class="text-muted">(Tự động tính)</small>
-                            {% if ton_kho_le_tan_form.ton_dau_ngay.errors %}
-                            <div class="text-danger">{{ ton_kho_le_tan_form.ton_dau_ngay.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">{{ ton_kho_le_tan_form.ton_cuoi_ngay.label }}</label>
-                            {{ ton_kho_le_tan_form.ton_cuoi_ngay|add_class:"form-control" }}
-                            {% if ton_kho_le_tan_form.ton_cuoi_ngay.errors %}
-                            <div class="text-danger">{{ ton_kho_le_tan_form.ton_cuoi_ngay.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Đơn vị hàng hóa</label>
-                            <input type="text" id="don_vi_hang_hoa_le_tan_display" class="form-control" readonly>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Thêm Tồn Kho Lễ Tân</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Form nhập tồn kho lễ tân từ Excel -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Nhập Tồn Kho Lễ Tân từ Excel</h5>
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="hidden" name="import_type" value="ton_kho_le_tan">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">{{ import_form.excel_file.label }}</label>
-                            {{ import_form.excel_file }}
-                            <small class="text-muted">Định dạng: .xlsx, các cột: hang_hoa, ngay_ton, ton_cuoi_ngay</small>
-                            {% if import_form.excel_file.errors %}
-                            <div class="text-danger">{{ import_form.excel_file.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-2"></i>Nhập File</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Danh sách tồn kho lễ tân với tìm kiếm và lọc -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">Danh Sách Tồn Kho Lễ Tân</h5>
-                    <form action="{% url 'delete_all_ton_kho_le_tan' %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa tất cả bản ghi tồn kho lễ tân?')">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt me-2"></i>Xóa Tất Cả</button>
-                    </form>
-                </div>
-                <!-- Thanh tìm kiếm và bộ lọc -->
-                <form method="get" class="mb-3">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Tìm kiếm theo tên hàng hóa</label>
-                            <input type="text" name="search_le_tan" class="form-control" placeholder="Nhập tên hàng hóa" value="{{ search_le_tan_query }}">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">{{ filter_le_tan_form.ngay_bat_dau.label }}</label>
-                            {{ filter_le_tan_form.ngay_bat_dau }}
-                            {% if filter_le_tan_form.ngay_bat_dau.errors %}
-                            <div class="text-danger">{{ filter_le_tan_form.ngay_bat_dau.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">{{ filter_le_tan_form.ngay_ket_thuc.label }}</label>
-                            {{ filter_le_tan_form.ngay_ket_thuc }}
-                            {% if filter_le_tan_form.ngay_ket_thuc.errors %}
-                            <div class="text-danger">{{ filter_le_tan_form.ngay_ket_thuc.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-2 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
-                        </div>
-                    </div>
-                </form>
-                <!-- Bảng danh sách -->
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Tên Hàng Hóa</th>
-                            <th>Ngày Tồn</th>
-                            <th>Tồn Đầu Ngày</th>
-                            <th>Tồn Cuối Ngày</th>
-                            <th>Đơn Vị Hàng Hóa</th>
-                            <th>Thao Tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ton_kho in ton_kho_le_tan_list %}
-                        <tr>
-                            <td>{{ ton_kho.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
-                            <td>{{ ton_kho.ngay_ton }}</td>
-                            <td>{{ ton_kho.ton_dau_ngay|floatformat:2 }}</td>
-                            <td>{{ ton_kho.ton_cuoi_ngay|floatformat:2 }}</td>
-                            <td>{{ ton_kho.hang_hoa.don_vi_hang_hoa|default:"Không xác định" }}</td>
-                            <td>
-                                <a href="{% url 'edit_ton_kho_le_tan' ton_kho.id %}?next={% url 'quan_ly_hang_hoa' %}" class="btn btn-sm btn-outline-warning">
-                                    <i class="fas fa-edit me-1"></i> Sửa
-                                </a>
-                                <form action="{% url 'delete_ton_kho_le_tan' ton_kho.id %}" method="post" style="display:inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="next" value="{% url 'quan_ly_hang_hoa' %}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn xóa?')">
-                                        <i class="fas fa-trash me-1"></i> Xóa
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyFilter()">
+                                        <i class="fas fa-filter me-1"></i>Lọc
                                     </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center">Chưa có dữ liệu tồn kho lễ tân</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                    <a href="{% url 'quan_ly_hang_hoa' %}" class="btn btn-outline-secondary btn-sm ms-1">
+                                        <i class="fas fa-times me-1"></i>Xóa Bộ Lọc
+                                    </a>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <span class="text-muted small">
+                                        Hiển thị {{ ton_kho_list|length }} bản ghi
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Table -->
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tên Hàng Hóa</th>
+                                            <th>Ngày Tồn</th>
+                                            <th>Tồn Đầu Ngày</th>
+                                            <th>Tồn Cuối Ngày</th>
+                                            <th>Đơn Vị Nguyên Liệu</th>
+                                            <th>Thao Tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ton_kho in ton_kho_list %}
+                                            <tr>
+                                                <td>
+                                                    <a href="#" class="text-decoration-none" 
+                                                       onclick="showTonKhoDetail('{{ ton_kho.id }}')">
+                                                        {{ ton_kho.hang_hoa.ten_hang_hoa|default:"Không xác định" }}
+                                                    </a>
+                                                </td>
+                                                <td>{{ ton_kho.ngay_ton|date:"d/m/Y" }}</td>
+                                                <td class="text-end">{{ ton_kho.ton_dau_ngay|floatformat:2 }}</td>
+                                                <td class="text-end fw-bold text-primary">{{ ton_kho.ton_cuoi_ngay|floatformat:2 }}</td>
+                                                <td>{{ ton_kho.hang_hoa.don_vi_nguyen_lieu|default:"Không xác định" }}</td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <a href="{% url 'edit_ton_kho_hang_hoa' ton_kho.id %}" 
+                                                           class="btn btn-outline-primary" title="Sửa">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <form method="post" class="d-inline" 
+                                                              action="{% url 'delete_ton_kho_hang_hoa' ton_kho.id %}" 
+                                                              style="display: inline;">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-outline-danger" 
+                                                                    title="Xóa" onclick="return confirm('Xóa bản ghi này?')">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted py-4">
+                                                    <i class="fas fa-inbox fa-2x mb-3"></i>
+                                                    <p>Chưa có dữ liệu tồn kho</p>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Tab Kho Tổng -->
-    <div class="tab-pane fade" id="kho-tong" role="tabpanel" aria-labelledby="kho-tong-tab">
-        <!-- Form lọc ngày tổng tồn kho -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Lọc Tổng Tồn Kho</h5>
-                
-                <form method="get" class="row g-3">
-                    <div class="col-md-4">
-                        <label for="tong_ton_date" class="form-label">Ngày Tổng Tồn:</label>
-                        <input type="date" name="tong_ton_date" id="tong_ton_date" class="form-control" value="{{ tong_ton_date|date:'Y-m-d' }}">
+        <!-- Tab Nhập Hàng -->
+        <div class="tab-pane fade" id="nhap-hang" role="tabpanel">
+            <div class="row">
+                <!-- Nhập Hàng Hóa -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-truck-loading me-2"></i>Nhập Hàng Hóa
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    {{ nhap_hang_hoa_form.hang_hoa.label_tag }}
+                                    <div class="input-group">
+                                        <span class="input-group-text">--- Chọn hàng hóa ---</span>
+                                        <select name="hang_hoa" class="form-select" required>
+                                            <option value="">Chọn hàng hóa...</option>
+                                            {% for hang_hoa in nhap_hang_hoa_form.hang_hoa.field.queryset %}
+                                                <option value="{{ hang_hoa.id }}">{{ hang_hoa.ten_hang_hoa }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    {% if nhap_hang_hoa_form.hang_hoa.errors %}
+                                        <div class="text-danger">{{ nhap_hang_hoa_form.hang_hoa.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    {{ nhap_hang_hoa_form.ngay_nhap.label_tag }}
+                                    {{ nhap_hang_hoa_form.ngay_nhap|add_class:"form-control" }}
+                                    {% if nhap_hang_hoa_form.ngay_nhap.errors %}
+                                        <div class="text-danger">{{ nhap_hang_hoa_form.ngay_nhap.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    {{ nhap_hang_hoa_form.so_luong.label_tag }}
+                                    {{ nhap_hang_hoa_form.so_luong|add_class:"form-control" }}
+                                    {% if nhap_hang_hoa_form.so_luong.errors %}
+                                        <div class="text-danger">{{ nhap_hang_hoa_form.so_luong.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Đơn vị hàng hóa</label>
+                                    <input type="text" class="form-control" readonly>
+                                </div>
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-plus me-2"></i>Nhập Hàng Hóa
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                    <div class="col-md-4 align-self-end">
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc</button>
-                        <a href="{% url 'quan_ly_hang_hoa' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Xóa Bộ Lọc</a>
+                </div>
+
+                <!-- Nhập Hàng Hóa từ Excel -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-file-excel me-2"></i>Nhập Hàng Hóa từ Excel
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label class="form-label">{{ import_form.excel_file.label }}</label>
+                                    {{ import_form.excel_file }}
+                                    <div class="form-text">
+                                        Định dạng: .xlsx, các cột: <code>hang_hoa</code>, <code>ngay_nhap</code>, <code>don_vi_hang_hoa</code>, <code>so_luong</code>
+                                    </div>
+                                    {% if import_form.excel_file.errors %}
+                                        <div class="text-danger">{{ import_form.excel_file.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-upload me-2"></i>Nhập File
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </form>
+                </div>
+
+                <!-- Lịch Sử Nhập Hàng -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-history me-2"></i>Lịch Sử Nhập Hàng
+                            </h5>
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm" name="delete_all_nhap_hang"
+                                        onclick="return confirm('Xóa tất cả bản ghi nhập hàng?')">
+                                    <i class="fas fa-trash me-1"></i>Xóa Tất Cả
+                                </button>
+                            </form>
+                        </div>
+                        <div class="card-body">
+                            <!-- Filter lịch sử nhập -->
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Ngày nhập bắt đầu</label>
+                                    <input type="date" class="form-control" id="nhap_bat_dau">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Ngày nhập kết thúc</label>
+                                    <input type="date" class="form-control" id="nhap_ket_thuc">
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="button" class="btn btn-outline-warning me-2" onclick="filterNhapHang()">
+                                        <i class="fas fa-filter me-1"></i>Lọc
+                                    </button>
+                                    <a href="#" class="btn btn-outline-secondary" onclick="clearNhapFilter()">
+                                        <i class="fas fa-times me-1"></i>Xóa Bộ Lọc
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tên Hàng Hóa</th>
+                                            <th>Ngày Nhập</th>
+                                            <th>Số Lượng</th>
+                                            <th>Đơn Vị</th>
+                                            <th>Thao Tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for nhap in nhap_hang_hoa_list %}
+                                            <tr>
+                                                <td>{{ nhap.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
+                                                <td>{{ nhap.ngay_nhap|date:"d/m/Y" }}</td>
+                                                <td class="text-end fw-bold">{{ nhap.so_luong|floatformat:2 }}</td>
+                                                <td>{{ nhap.don_vi_hang_hoa|default:"Không xác định" }}</td>
+                                                <td>
+                                                    <form method="post" class="d-inline" 
+                                                          action="{% url 'delete_nhap_hang_hoa' nhap.id %}" 
+                                                          style="display: inline;">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                                title="Xóa" onclick="return confirm('Xóa bản ghi này?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted py-4">
+                                                    <i class="fas fa-inbox fa-2x mb-3"></i>
+                                                    <p>Chưa có bản ghi nhập hàng</p>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Tổng tồn kho -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Tổng Tồn Kho</h5>
-                <!-- Nút Xuất Excel -->
-                <form method="get" action="{% url 'export_tong_ton_kho_excel' %}">
-                    <input type="hidden" name="tong_ton_date" value="{{ tong_ton_date|date:'Y-m-d' }}">
-                    <button type="submit" class="btn btn-success btn-sm">
+        <!-- Tab Kho Lễ Tân -->
+        <div class="tab-pane fade" id="kho-le-tan" role="tabpanel">
+            <div class="row">
+                <!-- Thêm Tồn Kho Lễ Tân Mới -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-hotel me-2"></i>Thêm Tồn Kho Lễ Tân Mới
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    {{ ton_kho_le_tan_form.hang_hoa.label_tag }}
+                                    <div class="input-group">
+                                        <span class="input-group-text">--- Chọn hàng hóa ---</span>
+                                        <select name="hang_hoa" class="form-select" required>
+                                            <option value="">Chọn hàng hóa...</option>
+                                            {% for hang_hoa in ton_kho_le_tan_form.hang_hoa.field.queryset %}
+                                                <option value="{{ hang_hoa.id }}">{{ hang_hoa.ten_hang_hoa }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    {% if ton_kho_le_tan_form.hang_hoa.errors %}
+                                        <div class="text-danger">{{ ton_kho_le_tan_form.hang_hoa.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    {{ ton_kho_le_tan_form.ngay_ton.label_tag }}
+                                    {{ ton_kho_le_tan_form.ngay_ton|add_class:"form-control" }}
+                                    {% if ton_kho_le_tan_form.ngay_ton.errors %}
+                                        <div class="text-danger">{{ ton_kho_le_tan_form.ngay_ton.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    {{ ton_kho_le_tan_form.ton_dau_ngay.label_tag }}
+                                    {{ ton_kho_le_tan_form.ton_dau_ngay|add_class:"form-control" }}
+                                    <small class="form-text text-muted">(Tự động tính)</small>
+                                    {% if ton_kho_le_tan_form.ton_dau_ngay.errors %}
+                                        <div class="text-danger">{{ ton_kho_le_tan_form.ton_dau_ngay.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    {{ ton_kho_le_tan_form.ton_cuoi_ngay.label_tag }}
+                                    {{ ton_kho_le_tan_form.ton_cuoi_ngay|add_class:"form-control" }}
+                                    {% if ton_kho_le_tan_form.ton_cuoi_ngay.errors %}
+                                        <div class="text-danger">{{ ton_kho_le_tan_form.ton_cuoi_ngay.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Đơn vị hàng hóa</label>
+                                    <input type="text" class="form-control" readonly>
+                                </div>
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="fas fa-plus me-2"></i>Thêm Tồn Kho Lễ Tân
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nhập Tồn Kho Lễ Tân từ Excel -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-file-excel me-2"></i>Nhập Tồn Kho Lễ Tân từ Excel
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label class="form-label">{{ import_form.excel_file.label }}</label>
+                                    {{ import_form.excel_file }}
+                                    <div class="form-text">
+                                        Định dạng: .xlsx, các cột: <code>hang_hoa</code>, <code>ngay_ton</code>, <code>ton_cuoi_ngay</code>
+                                    </div>
+                                    {% if import_form.excel_file.errors %}
+                                        <div class="text-danger">{{ import_form.excel_file.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="fas fa-upload me-2"></i>Nhập File
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danh Sách Tồn Kho Lễ Tân -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-list me-2"></i>Danh Sách Tồn Kho Lễ Tân
+                            </h5>
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-light btn-sm" name="delete_all_ton_kho_le_tan"
+                                        onclick="return confirm('Xóa tất cả bản ghi tồn kho lễ tân?')">
+                                    <i class="fas fa-trash me-1"></i>Xóa Tất Cả
+                                </button>
+                            </form>
+                        </div>
+                        <div class="card-body">
+                            <!-- Filter tồn kho lễ tân -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" placeholder="Tìm kiếm theo tên hàng hóa" 
+                                               id="search_le_tan" value="{{ search_le_tan_query|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    {{ filter_le_tan_form.ngay_bat_dau.label_tag }}
+                                    {{ filter_le_tan_form.ngay_bat_dau }}
+                                    {% if filter_le_tan_form.ngay_bat_dau.errors %}
+                                        <div class="text-danger">{{ filter_le_tan_form.ngay_bat_dau.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ filter_le_tan_form.ngay_ket_thuc.label_tag }}
+                                    {{ filter_le_tan_form.ngay_ket_thuc }}
+                                    {% if filter_le_tan_form.ngay_ket_thuc.errors %}
+                                        <div class="text-danger">{{ filter_le_tan_form.ngay_ket_thuc.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="applyLeTanFilter()">
+                                        <i class="fas fa-filter me-1"></i>Lọc
+                                    </button>
+                                    <a href="#" class="btn btn-outline-secondary btn-sm ms-1" onclick="clearLeTanFilter()">
+                                        <i class="fas fa-times me-1"></i>Xóa Bộ Lọc
+                                    </a>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <span class="text-muted small">
+                                        Hiển thị {{ ton_kho_le_tan_list|length }} bản ghi
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tên Hàng Hóa</th>
+                                            <th>Ngày Tồn</th>
+                                            <th>Tồn Đầu Ngày</th>
+                                            <th>Tồn Cuối Ngày</th>
+                                            <th>Đơn Vị Hàng Hóa</th>
+                                            <th>Thao Tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ton_kho in ton_kho_le_tan_list %}
+                                            <tr>
+                                                <td>{{ ton_kho.hang_hoa.ten_hang_hoa|default:"Không xác định" }}</td>
+                                                <td>{{ ton_kho.ngay_ton|date:"d/m/Y" }}</td>
+                                                <td class="text-end">{{ ton_kho.ton_dau_ngay|floatformat:2 }}</td>
+                                                <td class="text-end fw-bold text-danger">{{ ton_kho.ton_cuoi_ngay|floatformat:2 }}</td>
+                                                <td>{{ ton_kho.hang_hoa.don_vi_hang_hoa|default:"Không xác định" }}</td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <a href="{% url 'edit_ton_kho_le_tan' ton_kho.id %}" 
+                                                           class="btn btn-outline-danger" title="Sửa">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <form method="post" class="d-inline" 
+                                                              action="{% url 'delete_ton_kho_le_tan' ton_kho.id %}" 
+                                                              style="display: inline;">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-outline-danger" 
+                                                                    title="Xóa" onclick="return confirm('Xóa bản ghi này?')">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted py-4">
+                                                    <i class="fas fa-inbox fa-2x mb-3"></i>
+                                                    <p>Chưa có dữ liệu tồn kho lễ tân</p>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Kho Tổng -->
+        <div class="tab-pane fade" id="kho-tong" role="tabpanel">
+            <div class="row">
+                <!-- Lọc Tổng Tồn Kho -->
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="card-title mb-0">Lọc Tổng Tồn Kho</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="get">
+                                <div class="mb-2">
+                                    <label class="form-label small">Ngày Tổng Tồn:</label>
+                                    <input type="date" class="form-control form-control-sm" name="tong_ton_date" 
+                                           value="{{ tong_ton_date|date:'Y-m-d' }}">
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Lọc</button>
+                                    <a href="{% url 'quan_ly_hang_hoa' %}#kho-tong" class="btn btn-outline-light btn-sm">Xóa Bộ Lọc</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Xuất Excel -->
+                <div class="col-md-4 mb-3 d-flex align-items-end">
+                    <a href="{% url 'export_tong_ton_kho_excel' %}?tong_ton_date={{ tong_ton_date|date:'Y-m-d' }}" 
+                       class="btn btn-success w-100">
                         <i class="fas fa-file-excel me-2"></i>Xuất Excel
-                    </button>
-                </form>
-                <table class="table table-bordered mt-3">
-                    <thead>
-                        <tr>
-                            <th>Tên Hàng Hóa</th>
-                            <th>Tồn Kho</th>
-                            <th>Tồn Kho Lễ Tân</th>
-                            <th>Quy Đổi</th>
-                            <th>Tổng Tồn (G)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in tong_ton_kho_list %}
-                        <tr>
-                            <td>{{ item.ten_hang_hoa }}</td>
-                            <td>{{ item.ton_kho|floatformat:2 }} {{ item.don_vi }}</td>
-                            <td>{{ item.ton_kho_le_tan|floatformat:2 }} {{ item.don_vi_hang_hoa }}</td>
-                            <td>{{ item.quy_doi|floatformat:2 }} {{ item.don_vi }}</td>
-                            <td>{{ item.tong_ton|floatformat:2 }} {{ item.don_vi }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5">Không có dữ liệu tổng tồn kho.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                    </a>
+                </div>
+
+                <div class="col-md-4 mb-3"></div>
+
+                <!-- Tổng Tồn Kho -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="card-title mb-0">Tổng Tồn Kho (Ngày {{ tong_ton_date|date:"d/m/Y" }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tên Hàng Hóa</th>
+                                            <th>Tồn Kho</th>
+                                            <th>Tồn Kho Lễ Tân</th>
+                                            <th>Quy Đổi</th>
+                                            <th>Tổng Tồn (G)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in tong_ton_kho_list %}
+                                            <tr>
+                                                <td>{{ item.ten_hang_hoa }}</td>
+                                                <td class="text-end">{{ item.ton_kho|floatformat:2 }} {{ item.don_vi }}</td>
+                                                <td class="text-end">{{ item.ton_kho_le_tan|floatformat:2 }} {{ item.don_vi_hang_hoa }}</td>
+                                                <td class="text-end">{{ item.quy_doi|floatformat:2 }} {{ item.don_vi }}</td>
+                                                <td class="text-end fw-bold text-success">{{ item.tong_ton|floatformat:2 }} {{ item.don_vi }}</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted py-4">
+                                                    Không có dữ liệu tổng tồn kho.
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Lượng Dùng -->
+        <div class="tab-pane fade" id="luong-dung" role="tabpanel">
+            <div class="row">
+                <!-- Lọc Lượng Dùng Hàng Hóa -->
+                <div class="col-md-12 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-filter me-2"></i>Lọc Lượng Dùng Hàng Hóa
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Từ Ngày:</label>
+                                    <input type="date" class="form-control" name="luong_dung_date_from" 
+                                           value="{{ luong_dung_date_from|date:'Y-m-d' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Đến Ngày:</label>
+                                    <input type="date" class="form-control" name="luong_dung_date_to" 
+                                           value="{{ luong_dung_date_to|date:'Y-m-d' }}">
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-info text-white me-2">
+                                        <i class="fas fa-search me-1"></i>Lọc Lượng Dùng
+                                    </button>
+                                    <a href="{% url 'quan_ly_hang_hoa' %}#luong-dung" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-1"></i>Xóa Bộ Lọc
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lượng Dùng Hàng Hóa -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="card-title mb-0">
+                                Lượng Dùng Hàng Hóa từ {{ luong_dung_date_from|date:'d/m/Y' }} đến {{ luong_dung_date_to|date:'d/m/Y' }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tên Hàng Hóa</th>
+                                            <th>Đơn Vị</th>
+                                            <th>Lượng Dùng Tổng</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in luong_dung_list %}
+                                            <tr>
+                                                <td>{{ item.hang_hoa.ten_hang_hoa }}</td>
+                                                <td>{{ item.don_vi }}</td>
+                                                <td class="text-end fw-bold text-warning">{{ item.luong_dung_tong|floatformat:2 }}</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-4">
+                                                    Không có dữ liệu lượng dùng.
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Tab Lượng Dùng -->
-    <div class="tab-pane fade" id="luong-dung" role="tabpanel" aria-labelledby="luong-dung-tab">
-        <!-- Lọc ngày để tính lượng dùng hàng hóa -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Lọc Lượng Dùng Hàng Hóa</h5>
-                <form method="get" class="row g-3">
-                    <div class="col-md-4">
-                        <label for="luong_dung_date_from" class="form-label">Từ Ngày:</label>
-                        <input type="date" name="luong_dung_date_from" id="luong_dung_date_from" class="form-control" value="{{ luong_dung_date_from|date:'Y-m-d' }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="luong_dung_date_to" class="form-label">Đến Ngày:</label>
-                        <input type="date" name="luong_dung_date_to" id="luong_dung_date_to" class="form-control" value="{{ luong_dung_date_to|date:'Y-m-d' }}">
-                    </div>
-                    <div class="col-md-4 align-self-end">
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Lọc Lượng Dùng</button>
-                        <a href="{% url 'quan_ly_hang_hoa' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Xóa Bộ Lọc</a>
-                    </div>
-                </form>
+<!-- Modal xác nhận lưu -->
+<div id="confirmSaveModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header">
+            <h5><i class="fas fa-save me-2"></i>Xác Nhận Lưu Dữ Liệu</h5>
+            <span class="custom-modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="custom-modal-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Cảnh báo:</strong> Bạn có chắc chắn muốn lưu <span id="save_count" class="fw-bold">0</span> bản ghi tồn kho không?
+            </div>
+            <div class="text-muted small">
+                <i class="fas fa-info-circle me-1"></i>
+                Dữ liệu sẽ được cập nhật cho ngày <span id="selected_date_display" class="fw-bold"></span>
             </div>
         </div>
+        <div class="custom-modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                <i class="fas fa-times me-1"></i>Hủy
+            </button>
+            <button type="button" class="btn btn-primary" id="confirmSaveButton">
+                <i class="fas fa-check me-1"></i>Lưu Dữ Liệu
+            </button>
+        </div>
+    </div>
+</div>
 
-        <!-- Bảng Lượng Dùng Hàng Hóa -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Lượng Dùng Hàng Hóa từ {{ luong_dung_date_from|date:'d/m/Y' }} đến {{ luong_dung_date_to|date:'d/m/Y' }}</h5>
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Tên Hàng Hóa</th>
-                            <th>Đơn Vị</th>
-                            <th>Lượng Dùng Tổng (Từ {{ luong_dung_date_from|date:'d/m/Y' }} đến {{ luong_dung_date_to|date:'d/m/Y' }})</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in luong_dung_list %}
-                        <tr>
-                            <td>{{ item.hang_hoa.ten_hang_hoa }}</td>
-                            <td>{{ item.don_vi }}</td>
-                            <td>{{ item.luong_dung_tong|floatformat:2 }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center">Không có dữ liệu lượng dùng.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+<!-- Modal chọn hàng hóa -->
+<div class="modal fade" id="selectHangHoaModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-search me-2"></i>Chọn Hàng Hóa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" class="form-control" id="hang_hoa_search" 
+                                   placeholder="Tìm kiếm hàng hóa..." onkeyup="searchHangHoa()">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-end">
+                            <span class="badge bg-primary fs-6" id="hang_hoa_count">0</span>
+                            <span class="ms-1">kết quả</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 80px;">Mã HH</th>
+                                <th style="width: 300px;">Tên Hàng Hóa</th>
+                                <th style="width: 100px;">Đơn Vị</th>
+                                <th style="width: 120px;" class="text-end">Tồn Đầu Ngày</th>
+                                <th style="width: 80px;">Chọn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hang_hoa_tbody">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-search fa-2x mb-2"></i>
+                                    <p>Bắt đầu tìm kiếm...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Đóng
+                </button>
             </div>
         </div>
     </div>
@@ -632,102 +1001,797 @@
 
 {% block extra_scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const hangHoaSelects = document.querySelectorAll('select[name="hang_hoa"]');
-        const donViNguyenLieuDisplay = document.getElementById('don_vi_nguyen_lieu_display');
-        const donViHangHoaDisplay = document.getElementById('don_vi_hang_hoa_display');
-        const donViHangHoaLeTanDisplay = document.getElementById('don_vi_hang_hoa_le_tan_display');
+$(document).ready(function() {
+    console.log('=== PAGE LOADED ===');
+    
+    let selectedDate = null;
+    let tonKhoData = [];
+    let editedRows = new Set();
+    let originalData = {};
 
-        hangHoaSelects.forEach(select => {
-            select.addEventListener('change', function () {
-                const selectedOption = this.options[this.selectedIndex];
-                const donViNguyenLieu = selectedOption.getAttribute('data-don-vi-nguyen-lieu') || '';
-                const donViHangHoa = selectedOption.getAttribute('data-don-vi-hang-hoa') || '';
-                if (donViNguyenLieuDisplay && select.id === 'id_hang_hoa_ton_kho') {
-                    donViNguyenLieuDisplay.value = donViNguyenLieu;
-                }
-                if (donViHangHoaDisplay && select.id === 'id_hang_hoa') {
-                    donViHangHoaDisplay.value = donViHangHoa;
-                }
-                if (donViHangHoaLeTanDisplay && select.id === 'id_hang_hoa_le_tan') {
-                    donViHangHoaLeTanDisplay.value = donViHangHoa;
-                }
-            });
-
-            if (select.value) {
-                const defaultOption = select.querySelector(`option[value="${select.value}"]`);
-                if (defaultOption) {
-                    const defaultDonViNguyenLieu = defaultOption.getAttribute('data-don-vi-nguyen-lieu') || '';
-                    const defaultDonViHangHoa = defaultOption.getAttribute('data-don-vi-hang-hoa') || '';
-                    if (donViNguyenLieuDisplay && select.id === 'id_hang_hoa_ton_kho') {
-                        donViNguyenLieuDisplay.value = defaultDonViNguyenLieu;
-                    }
-                    if (donViHangHoaDisplay && select.id === 'id_hang_hoa') {
-                        donViHangHoaDisplay.value = defaultDonViHangHoa;
-                    }
-                    if (donViHangHoaLeTanDisplay && select.id === 'id_hang_hoa_le_tan') {
-                        donViHangHoaLeTanDisplay.value = defaultDonViHangHoa;
-                    }
-                }
-            }
-        });
-
-        // Xác nhận và validate form Thêm Tồn Kho Lễ Tân
-        document.querySelector('form[name="ton_kho_le_tan_form"]').addEventListener('submit', function (e) {
-            const hangHoa = this.querySelector('select[name="hang_hoa"]').value;
-            if (!hangHoa) {
-                e.preventDefault();
-                alert('Vui lòng chọn hàng hóa trước khi thêm tồn kho lễ tân.');
-                return;
-            }
-            if (!confirm('Bạn có chắc muốn thêm tồn kho lễ tân này?')) {
-                e.preventDefault();
-            }
-        });
-
-        // Xác nhận và validate form Nhập Hàng Hóa
-        document.querySelector('form[name="nhap_hang_hoa_form"]').addEventListener('submit', function (e) {
-            const hangHoa = this.querySelector('select[name="hang_hoa"]').value;
-            if (!hangHoa) {
-                e.preventDefault();
-                alert('Vui lòng chọn hàng hóa trước khi nhập hàng.');
-                return;
-            }
-            if (!confirm('Bạn có chắc muốn nhập hàng hóa này?')) {
-                e.preventDefault();
-            }
-        });
-
-        // Xác nhận và validate form Thêm Tồn Kho
-        document.querySelector('form:not([name="nhap_hang_hoa_form"]):not([name="ton_kho_le_tan_form"]):not([enctype="multipart/form-data"])').addEventListener('submit', function (e) {
-            const hangHoa = this.querySelector('select[name="hang_hoa"]').value;
-            if (!hangHoa) {
-                e.preventDefault();
-                alert('Vui lòng chọn hàng hóa trước khi thêm tồn kho.');
-                return;
-            }
-            if (this.querySelector('#id_hang_hoa_ton_kho') && !confirm('Bạn có chắc muốn thêm tồn kho này?')) {
-                e.preventDefault();
-            }
-        });
-
-        // Xác nhận khi gửi form Nhập từ Excel
-        document.querySelectorAll('form[enctype="multipart/form-data"]').forEach(form => {
-            form.addEventListener('submit', function (e) {
-                const importType = this.querySelector('input[name="import_type"]').value;
-                let message = '';
-                if (importType === 'ton_kho') {
-                    message = 'Bạn có chắc muốn nhập tồn kho từ file Excel này?';
-                } else if (importType === 'nhap_hang_hoa') {
-                    message = 'Bạn có chắc muốn nhập hàng hóa từ file Excel này?';
-                } else if (importType === 'ton_kho_le_tan') {
-                    message = 'Bạn có chắc muốn nhập tồn kho lễ tân từ file Excel này?';
-                }
-                if (!confirm(message)) {
-                    e.preventDefault();
-                }
-            });
-        });
+    // Handle date change
+    $('#id_ngay_ton').on('change', function() {
+        selectedDate = $(this).val();
+        console.log('Date changed:', selectedDate);
+        if (selectedDate) {
+            $('#selected_date_display').text(new Date(selectedDate).toLocaleDateString('vi-VN'));
+            loadTonKhoData();
+        } else {
+            clearTable();
+        }
     });
+
+    // Hàm tải dữ liệu tồn kho
+    window.loadTonKhoData = function() {
+        console.log('Loading data for date:', selectedDate);
+        
+        if (!selectedDate) {
+            showAlert('Vui lòng chọn ngày tồn trước!', 'warning');
+            return;
+        }
+
+        showLoading(true);
+
+        $.ajax({
+            url: '{% url "get_ton_kho_data" %}',
+            method: 'GET',
+            data: {
+                'ngay_ton': selectedDate,
+                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                console.log('AJAX success:', response);
+                showLoading(false);
+                if (response.success) {
+                    tonKhoData = response.data;
+                    originalData = JSON.parse(JSON.stringify(response.data));
+                    renderTableData();
+                    updateStats();
+                    showAlert('Đã tải ' + response.data.length + ' hàng hóa thành công!', 'success');
+                } else {
+                    showAlert(response.message || 'Không thể tải dữ liệu', 'danger');
+                    clearTable();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', error, xhr.responseText);
+                showLoading(false);
+                showAlert('Lỗi kết nối: ' + error, 'danger');
+                clearTable();
+            }
+        });
+    };
+
+    // Hàm render dữ liệu vào bảng
+    function renderTableData() {
+        console.log('Rendering table with', tonKhoData.length, 'items');
+        let html = '';
+        let serial = 1;
+        
+        tonKhoData.forEach(function(item, index) {
+            const rowId = `row_${index}`;
+            const isEdited = editedRows.has(index);
+            const hasTonCuoi = item.ton_cuoi_ngay !== null && item.ton_cuoi_ngay !== undefined;
+            
+            html += `
+                <tr class="${isEdited ? 'table-warning' : ''}" data-row-id="${rowId}">
+                    <td class="text-center align-middle fw-bold" style="background-color: #f8f9fa;">${serial++}</td>
+                    <td class="align-middle">
+                        <div class="input-group input-group-sm">
+                            <input type="hidden" name="ton_kho_items[${index}][hang_hoa_id]" value="${item.hang_hoa_id}">
+                            <input type="text" class="form-control form-control-sm readonly-hanghoa" 
+                                   value="${item.ten_hang_hoa}" readonly 
+                                   style="background-color: #f8f9fa; cursor: pointer; border-right: none;"
+                                   title="Click để thay đổi" onclick="selectHangHoa(${index})">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2 edit-hanghoa-btn" 
+                                    onclick="selectHangHoa(${index})" title="Thay đổi hàng hóa">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="text-center align-middle" style="background-color: #d4edda;">
+                        <input type="number" class="form-control form-control-sm text-center" 
+                               value="${item.ton_dau_ngay.toFixed(2)}" readonly 
+                               style="background-color: #d4edda; border: none; font-weight: bold; color: #155724;"
+                               step="0.01" min="0">
+                        <input type="hidden" name="ton_kho_items[${index}][ton_dau_ngay]" value="${item.ton_dau_ngay}">
+                    </td>
+                    <td class="align-middle" style="background-color: #fff3cd;">
+                        <input type="number" class="form-control form-control-sm ton_cuoi_input text-end" 
+                               name="ton_kho_items[${index}][ton_cuoi_ngay]" 
+                               value="${hasTonCuoi ? item.ton_cuoi_ngay.toFixed(2) : ''}" 
+                               step="0.01" min="0" placeholder="0.00"
+                               ${hasTonCuoi ? '' : 'required'}
+                               oninput="handleTonCuoiChange(${index}, this.value)"
+                               style="font-weight: ${hasTonCuoi ? 'bold' : 'normal'}">
+                    </td>
+                    <td class="text-center align-middle fw-medium" style="background-color: #f8f9fa;">
+                        ${item.don_vi_nguyen_lieu || 'Không xác định'}
+                        <input type="hidden" name="ton_kho_items[${index}][don_vi_nguyen_lieu]" value="${item.don_vi_nguyen_lieu || ''}">
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+            <tr class="table-secondary">
+                <td colspan="5" class="text-center py-3">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addNewRow()">
+                        <i class="fas fa-plus me-1"></i>Thêm Hàng Hóa Mới
+                    </button>
+                </td>
+            </tr>
+        `;
+
+        $('#ton_kho_tbody').html(html);
+        
+        // Event delegation cho edit buttons
+        $(document).off('click', '.edit-hanghoa-btn, .readonly-hanghoa').on('click', '.edit-hanghoa-btn, .readonly-hanghoa', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const index = $(this).closest('tr').data('row-id').split('_')[1];
+            selectHangHoa(parseInt(index));
+        });
+        
+        // Highlight hàng có tồn cuối
+        tonKhoData.forEach(function(item, index) {
+            if (item.ton_cuoi_ngay !== null && item.ton_cuoi_ngay !== undefined && item.ton_cuoi_ngay >= 0) {
+                $(`tr[data-row-id="row_${index}"]`).addClass('table-success');
+            }
+        });
+    }
+
+    // Xử lý khi thay đổi tồn cuối
+    window.handleTonCuoiChange = function(index, value) {
+        console.log('Ton cuoi changed:', index, value);
+        const numericValue = parseFloat(value);
+        const input = $(`input[name="ton_kho_items[${index}][ton_cuoi_ngay]"]`);
+        const row = $(`tr[data-row-id="row_${index}"]`);
+        
+        if (!isNaN(numericValue) && numericValue >= 0) {
+            tonKhoData[index].ton_cuoi_ngay = numericValue;
+            input.val(numericValue.toFixed(2));
+            
+            if (!editedRows.has(index)) {
+                editedRows.add(index);
+                row.removeClass('table-success').addClass('table-warning');
+            }
+            
+            updateTotalTon();
+            updateStats();
+        } else if (value === '') {
+            tonKhoData[index].ton_cuoi_ngay = null;
+            input.val('');
+            editedRows.add(index);
+            row.removeClass('table-success table-warning');
+            updateTotalTon();
+            updateStats();
+        } else {
+            input.val(originalData[index]?.ton_cuoi_ngay?.toFixed(2) || '');
+            showAlert('Giá trị không hợp lệ. Vui lòng nhập số >= 0.', 'warning');
+        }
+    };
+
+    // Hàm thêm dòng mới
+    window.addNewRow = function() {
+        console.log('Adding new row');
+        const newIndex = tonKhoData.length;
+        tonKhoData.push({
+            hang_hoa_id: '',
+            ten_hang_hoa: '',
+            ton_dau_ngay: 0,
+            ton_cuoi_ngay: null,
+            don_vi_nguyen_lieu: ''
+        });
+        
+        const serial = tonKhoData.length;
+        const rowId = `row_${newIndex}`;
+        
+        const newRow = `
+            <tr class="table-info" data-row-id="${rowId}">
+                <td class="text-center align-middle fw-bold" style="background-color: #f8f9fa;">${serial}</td>
+                <td class="align-middle">
+                    <div class="input-group input-group-sm">
+                        <input type="hidden" name="ton_kho_items[${newIndex}][hang_hoa_id]" value="">
+                        <input type="text" class="form-control form-control-sm readonly-hanghoa" 
+                               name="ton_kho_items[${newIndex}][ten_hang_hoa]" 
+                               placeholder="Chọn hàng hóa..." required 
+                               style="border: 2px dashed #0dcaf0; background-color: #cff4fc; cursor: pointer; border-right: none;"
+                               onclick="selectHangHoa(${newIndex})" title="Click để chọn hàng hóa">
+                        <button type="button" class="btn btn-outline-primary btn-sm edit-hanghoa-btn" 
+                                onclick="selectHangHoa(${newIndex})">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </td>
+                <td class="text-center align-middle" style="background-color: #d4edda;">
+                    <input type="number" class="form-control form-control-sm text-center" 
+                           value="0.00" readonly 
+                           style="background-color: #d4edda; border: none; font-weight: bold;"
+                           step="0.01" min="0">
+                    <input type="hidden" name="ton_kho_items[${newIndex}][ton_dau_ngay]" value="0">
+                </td>
+                <td class="align-middle" style="background-color: #fff3cd;">
+                    <input type="number" class="form-control form-control-sm ton_cuoi_input text-end" 
+                           name="ton_kho_items[${newIndex}][ton_cuoi_ngay]" 
+                           value="" step="0.01" min="0" 
+                           placeholder="0.00" required>
+                </td>
+                <td class="text-center align-middle" style="background-color: #f8f9fa;">
+                    <select class="form-select form-select-sm" name="ton_kho_items[${newIndex}][don_vi_nguyen_lieu]" required>
+                        <option value="">Chọn đơn vị</option>
+                        <option value="KG">KG</option>
+                        <option value="L">L</option>
+                        <option value="Cái">Cái</option>
+                        <option value="Hộp">Hộp</option>
+                        <option value="Gói">Gói</option>
+                        <option value="Chai">Chai</option>
+                        <option value="Lon">Lon</option>
+                    </select>
+                </td>
+            </tr>
+        `;
+        
+        $('#ton_kho_tbody tr:last').before(newRow);
+        editedRows.add(newIndex);
+        updateStats();
+        
+        // Focus vào input hàng hóa mới
+        $(`input[name="ton_kho_items[${newIndex}][ten_hang_hoa]"]`).focus();
+    };
+
+    // Hàm chọn hàng hóa
+    window.selectHangHoa = function(index) {
+        console.log('Select hang hoa called for index:', index);
+        currentRowIndex = index;
+        loadHangHoaList();
+        
+        const modal = new bootstrap.Modal(document.getElementById('selectHangHoaModal'));
+        modal.show();
+    };
+
+    let currentRowIndex = null;
+
+    // Hàm load danh sách hàng hóa cho modal
+    function loadHangHoaList() {
+        console.log('Load hang hoa list called');
+        
+        $.ajax({
+            url: '{% url "get_hang_hoa_list" %}',
+            method: 'GET',
+            data: {
+                'ngay_ton': selectedDate,
+                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                console.log('Hang hoa list success:', response);
+                let html = '';
+                let count = 0;
+                
+                response.forEach(function(item) {
+                    count++;
+                    const isSelected = item.id == tonKhoData[currentRowIndex]?.hang_hoa_id;
+                    const rowClass = isSelected ? 'table-primary' : '';
+                    
+                    html += `
+                        <tr class="${rowClass}" data-id="${item.id}" style="cursor: pointer;">
+                            <td class="fw-bold">${item.id}</td>
+                            <td>${item.ten_hang_hoa}</td>
+                            <td class="text-center">${item.don_vi_nguyen_lieu || '-'}</td>
+                            <td class="text-end">${item.ton_dau_ngay.toFixed(2)}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}" 
+                                        onclick="selectThisHangHoa(${item.id})">
+                                    ${isSelected ? '<i class="fas fa-check"></i>' : 'Chọn'}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                if (count === 0) {
+                    html = `
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-3"></i>
+                                <p>Không có dữ liệu hàng hóa</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                $('#hang_hoa_tbody').html(html);
+                $('#hang_hoa_count').text(count);
+                
+                // Highlight row đã chọn
+                $('#hang_hoa_tbody tr').off('click').on('click', function() {
+                    const hangHoaId = $(this).data('id');
+                    selectThisHangHoa(hangHoaId);
+                });
+            },
+            error: function() {
+                showAlert('Không thể tải danh sách hàng hóa', 'danger');
+            }
+        });
+    }
+
+    // Hàm chọn một hàng hóa cụ thể
+    window.selectThisHangHoa = function(hangHoaId) {
+        console.log('Select This Hang Hoa:', hangHoaId);
+        
+        const hangHoa = tonKhoData.find(item => item.hang_hoa_id == hangHoaId);
+        if (!hangHoa) {
+            $.ajax({
+                url: `/api/get-hang-hoa-detail/${hangHoaId}/`,
+                method: 'GET',
+                data: { 'ngay_ton': selectedDate },
+                success: function(response) {
+                    console.log('API response:', response);
+                    if (response.success) {
+                        updateRowWithHangHoa(currentRowIndex, response.data);
+                        $('#selectHangHoaModal').modal('hide');
+                    } else {
+                        showAlert('Không thể tải thông tin: ' + response.message, 'danger');
+                    }
+                },
+                error: function() {
+                    showAlert('Lỗi khi tải thông tin hàng hóa', 'danger');
+                }
+            });
+        } else {
+            updateRowWithHangHoa(currentRowIndex, hangHoa);
+            $('#selectHangHoaModal').modal('hide');
+        }
+    };
+
+    // Hàm cập nhật row với thông tin hàng hóa
+    function updateRowWithHangHoa(index, hangHoa) {
+        console.log('Update Row:', index, hangHoa);
+        
+        tonKhoData[index] = {
+            ...tonKhoData[index],
+            hang_hoa_id: hangHoa.id,
+            ten_hang_hoa: hangHoa.ten_hang_hoa,
+            don_vi_nguyen_lieu: hangHoa.don_vi_nguyen_lieu || 'Không xác định',
+            ton_dau_ngay: parseFloat(hangHoa.ton_dau_ngay) || 0
+        };
+        
+        // Cập nhật UI
+        $(`input[name="ton_kho_items[${index}][hang_hoa_id]"]`).val(hangHoa.id);
+        $(`input[name="ton_kho_items[${index}][ten_hang_hoa]"]`).val(hangHoa.ten_hang_hoa);
+        $(`input[name="ton_kho_items[${index}][ton_dau_ngay]"]`).val(hangHoa.ton_dau_ngay);
+        $(`select[name="ton_kho_items[${index}][don_vi_nguyen_lieu]"]`).val(hangHoa.don_vi_nguyen_lieu);
+        
+        $(`tr[data-row-id="row_${index}"] td:nth-child(3) input[type="number"]`).val(hangHoa.ton_dau_ngay.toFixed(2));
+        $(`tr[data-row-id="row_${index}"] td:nth-child(5)`).html(hangHoa.don_vi_nguyen_lieu || 'Không xác định');
+        
+        // Highlight
+        editedRows.add(index);
+        $(`tr[data-row-id="row_${index}"]`).removeClass('table-info').addClass('table-warning');
+        
+        updateStats();
+    }
+
+    // Hàm cập nhật thống kê
+    function updateStats() {
+        const totalItems = tonKhoData.length;
+        const editedCount = editedRows.size;
+        const totalTon = tonKhoData
+            .filter((_, index) => editedRows.has(index))
+            .reduce((sum, item) => sum + (item.ton_cuoi_ngay || 0), 0);
+        
+        $('#total_items').text(totalItems);
+        $('#edited_count').text(editedCount);
+        $('#ton_tong').text(totalTon.toFixed(2));
+        
+        $('#save_count').text(editedCount);
+        $('#save_bulk_btn').prop('disabled', editedCount === 0);
+        
+        // Cập nhật màu sắc
+        $('#edited_count').toggleClass('text-success', editedCount > 0).toggleClass('text-muted', editedCount === 0);
+    }
+
+    // Hàm tính tổng tồn
+    function updateTotalTon() {
+        const totalTon = tonKhoData
+            .filter((_, index) => editedRows.has(index))
+            .reduce((sum, item) => sum + (item.ton_cuoi_ngay || 0), 0);
+        $('#ton_tong').text(totalTon.toFixed(2));
+    }
+
+    // Save button click - Gọi trực tiếp confirmSaveBulk
+    $('#save_bulk_btn').on('click', function(e) {
+        e.preventDefault();
+        if (editedRows.size === 0) {
+            showAlert('Không có dữ liệu nào để lưu!', 'warning');
+            return;
+        }
+        confirmSaveBulk();
+    });
+
+    window.confirmSaveBulk = function() {
+    console.log('=== DEBUG SAVE ===');
+    console.log('Selected date:', selectedDate);
+    console.log('Edited rows:', Array.from(editedRows));
+    console.log('Form data:');
+
+    // Log tất cả form data
+    const formData = new FormData($('#ton_kho_bulk_form')[0]);
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+
+    // Chuẩn bị dữ liệu để hiển thị trong modal xác nhận
+    const saveCount = tonKhoData.length; // Số lượng hàng hóa, bao gồm cả chưa nhập
+    if (saveCount === 0) {
+        showAlert('Không có dữ liệu để lưu!', 'warning');
+        return;
+    }
+
+    // Hiển thị modal
+    $('#save_count').text(saveCount);
+    $('#selected_date_display').text(new Date(selectedDate).toLocaleDateString('vi-VN'));
+    document.getElementById('confirmSaveModal').style.display = 'flex';
+
+    // Gán sự kiện cho nút "Lưu Dữ Liệu" trong modal
+    document.getElementById('confirmSaveButton').onclick = function() {
+        document.getElementById('confirmSaveModal').style.display = 'none';
+
+        // Đảm bảo tất cả các dòng có giá trị, nếu không nhập thì đặt ton_cuoi_ngay = 0
+        tonKhoData.forEach((item, index) => {
+            const tonCuoiInput = $(`input[name="ton_kho_items[${index}][ton_cuoi_ngay]"]`);
+            if (!tonCuoiInput.val() || isNaN(parseFloat(tonCuoiInput.val()))) {
+                tonCuoiInput.val('0.00'); // Đặt mặc định là 0 nếu không nhập
+                item.ton_cuoi_ngay = 0;
+            } else {
+                item.ton_cuoi_ngay = parseFloat(tonCuoiInput.val());
+            }
+            // Đảm bảo hang_hoa_id luôn có, nếu rỗng thì giữ nguyên (server sẽ xử lý)
+        });
+
+        // Thêm hidden input cho ngày tồn
+        if ($('#id_ngay_ton_hidden').length === 0) {
+            $('#ton_kho_bulk_form').append(`
+                <input type="hidden" id="id_ngay_ton_hidden" name="ngay_ton" value="${selectedDate}">
+            `);
+        } else {
+            $('#id_ngay_ton_hidden').val(selectedDate);
+        }
+
+        // Thêm action để view biết đây là bulk submit
+        if ($('#bulk_action_hidden').length === 0) {
+            $('#ton_kho_bulk_form').append('<input type="hidden" id="bulk_action_hidden" name="bulk_action" value="save_ton_kho">');
+        }
+
+        showLoading(true, 'Đang lưu dữ liệu...');
+
+        // Gửi AJAX và xử lý phản hồi
+        $.ajax({
+            url: '{% url "quan_ly_hang_hoa" %}',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                showLoading(false);
+                if (response.success) {
+                    showAlert(response.message, 'success');
+                    if (response.messages_list && response.messages_list.length > 0) {
+                        console.log('Details:', response.messages_list);
+                        showAlert('Chi tiết:\n' + response.messages_list.join('\n'), 'info');
+                    }
+                    // Làm mới dữ liệu bảng
+                    loadTonKhoData();
+                    editedRows.clear(); // Xóa các hàng đã chỉnh sửa sau khi lưu thành công
+                } else {
+                    showAlert('Lỗi khi lưu dữ liệu: ' + (response.message || 'Không rõ'), 'danger');
+                    if (response.messages_list && response.messages_list.length > 0) {
+                        console.log('Errors:', response.messages_list);
+                        showAlert('Lỗi chi tiết:\n' + response.messages_list.join('\n'), 'danger');
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                showLoading(false);
+                showAlert('Lỗi kết nối: ' + error, 'danger');
+                console.error('AJAX Error:', xhr.responseText);
+            }
+        });
+    };
+};
+
+// Hàm đóng modal
+function closeModal() {
+    document.getElementById('confirmSaveModal').style.display = 'none';
+}
+
+    // Hàm xóa bảng
+    window.clearTable = function() {
+        if (confirm('Xóa tất cả dữ liệu trong bảng?')) {
+            tonKhoData = [];
+            editedRows.clear();
+            originalData = {};
+            selectedDate = null;
+            $('#id_ngay_ton').val('');
+            $('#ton_kho_tbody').html(`
+                <tr class="table-secondary">
+                    <td colspan="5" class="text-center py-4">
+                        <i class="fas fa-info-circle text-muted me-2"></i>
+                        <span class="text-muted">Nhấn "Tải Dữ Liệu" để hiển thị danh sách hàng hóa</span>
+                    </td>
+                </tr>
+            `);
+            updateStats();
+            showAlert('Đã xóa dữ liệu bảng!', 'info');
+        }
+    };
+
+    // Hàm hiển thị loading
+    function showLoading(show, message = 'Đang tải...') {
+        const tbody = $('#ton_kho_tbody');
+        if (show) {
+            tbody.html(`
+                <tr>
+                    <td colspan="5" class="text-center py-4">
+                        <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
+                            <span class="visually-hidden">${message}</span>
+                        </div>
+                        <p class="text-muted mb-0">${message}</p>
+                    </td>
+                </tr>
+            `);
+        }
+    }
+
+    // Hàm hiển thị alert
+    function showAlert(message, type = 'info') {
+        // Tạo alert element
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" role="alert">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Xóa alert cũ
+        $('.position-fixed.alert').remove();
+        
+        // Thêm alert mới
+        $('body').append(alertHtml);
+        
+        // Tự động xóa sau 5 giây
+        setTimeout(() => {
+            $('.position-fixed.alert').fadeOut();
+        }, 5000);
+    }
+
+    // Hàm tìm kiếm hàng hóa trong modal
+    window.searchHangHoa = function() {
+        const searchTerm = $('#hang_hoa_search').val().toLowerCase().trim();
+        const rows = $('#hang_hoa_tbody tr');
+        let visibleCount = 0;
+        
+        rows.each(function() {
+            const tenHangHoa = $(this).find('td:nth-child(2)').text().toLowerCase();
+            if (searchTerm === '' || tenHangHoa.includes(searchTerm)) {
+                $(this).show();
+                visibleCount++;
+            } else {
+                $(this).hide();
+            }
+        });
+        
+        $('#hang_hoa_count').text(visibleCount);
+    };
+
+    // Khởi tạo ngày hiện tại
+    const today = new Date().toISOString().split('T')[0];
+    if (!$('#id_ngay_ton').val()) {
+        $('#id_ngay_ton').val(today);
+        selectedDate = today;
+        $('#selected_date_display').text(new Date(today).toLocaleDateString('vi-VN'));
+    }
+
+    // Event listeners cho filter
+    window.applyFilter = function() {
+        const search = $('input[name="search"]').val();
+        const ngayBatDau = $(filter_form.ngay_bat_dau.html_name).val();
+        const ngayKetThuc = $(filter_form.ngay_ket_thuc.html_name).val();
+        
+        let url = new URL(window.location);
+        if (search) url.searchParams.set('search', search);
+        if (ngayBatDau) url.searchParams.set('ngay_bat_dau', ngayBatDau);
+        if (ngayKetThuc) url.searchParams.set('ngay_ket_thuc', ngayKetThuc);
+        
+        window.location = url;
+    };
+
+    window.applyLeTanFilter = function() {
+        const search = $('#search_le_tan').val();
+        const ngayBatDau = $(filter_le_tan_form.ngay_bat_dau.html_name).val();
+        const ngayKetThuc = $(filter_le_tan_form.ngay_ket_thuc.html_name).val();
+        
+        let url = new URL(window.location);
+        if (search) url.searchParams.set('search_le_tan', search);
+        if (ngayBatDau) url.searchParams.set('le_tan_ngay_bat_dau', ngayBatDau);
+        if (ngayKetThuc) url.searchParams.set('le_tan_ngay_ket_thuc', ngayKetThuc);
+        
+        window.location = url;
+    };
+
+    window.filterNhapHang = function() {
+        const batDau = $('#nhap_bat_dau').val();
+        const ketThuc = $('#nhap_ket_thuc').val();
+        
+        let url = new URL(window.location);
+        if (batDau) url.searchParams.set('ngay_nhap_bat_dau', batDau);
+        if (ketThuc) url.searchParams.set('ngay_nhap_ket_thuc', ketThuc);
+        
+        window.location = url;
+    };
+
+    window.clearNhapFilter = function() {
+        const url = new URL(window.location);
+        url.searchParams.delete('ngay_nhap_bat_dau');
+        url.searchParams.delete('ngay_nhap_ket_thuc');
+        window.location = url;
+    };
+
+    window.clearLeTanFilter = function() {
+        const url = new URL(window.location);
+        url.searchParams.delete('search_le_tan');
+        url.searchParams.delete('le_tan_ngay_bat_dau');
+        url.searchParams.delete('le_tan_ngay_ket_thuc');
+        window.location = url;
+    };
+
+    window.showTonKhoDetail = function(id) {
+        // Implement modal chi tiết nếu cần
+        alert('Chức năng xem chi tiết tồn kho - ID: ' + id);
+    };
+});
+
+// CSS tùy chỉnh cho bảng Excel-style
+const style = document.createElement('style');
+style.textContent = `
+    #ton_kho_table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.875rem;
+    }
+    
+    #ton_kho_table th,
+    #ton_kho_table td {
+        border: 1px solid #dee2e6;
+        padding: 6px 8px;
+        vertical-align: middle;
+        position: relative;
+    }
+    
+    #ton_kho_table th {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+        font-weight: 600;
+        color: #495057;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 2px solid #adb5bd;
+    }
+    
+    #ton_kho_table thead th:first-child {
+        border-left: 2px solid #adb5bd;
+        border-top: 2px solid #adb5bd;
+    }
+    
+    #ton_kho_table thead th:last-child {
+        border-right: 2px solid #adb5bd;
+        border-top: 2px solid #adb5bd;
+    }
+    
+    #ton_kho_table tbody td:first-child {
+        border-left: 2px solid #adb5bd;
+    }
+    
+    #ton_kho_table tbody td:last-child {
+        border-right: 2px solid #adb5bd;
+    }
+    
+    #ton_kho_table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    #ton_kho_table tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.001);
+    }
+    
+    #ton_kho_table .table-warning {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107 !important;
+        transition: all 0.3s ease;
+    }
+    
+    #ton_kho_table .table-success {
+        background-color: #d1e7dd !important;
+        border-left: 4px solid #198754 !important;
+    }
+    
+    #ton_kho_table .table-info {
+        background-color: #cff4fc !important;
+        border-left: 4px dashed #0dcaf0 !important;
+    }
+    
+    #ton_kho_table .ton_cuoi_input {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+        font-weight: 500;
+    }
+    
+    #ton_kho_table .ton_cuoi_input:focus {
+        background-color: #fff8e1;
+        border-color: #e0a800;
+        box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+        font-weight: bold;
+    }
+    
+    #ton_kho_table input[readonly] {
+        background-color: #f8f9fa !important;
+        cursor: not-allowed;
+        color: #6c757d;
+    }
+    
+    .input-group-sm .form-control,
+    .input-group-sm .form-select {
+        font-size: 0.875rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .table-responsive {
+        border-radius: 0.375rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .btn-group-sm > .btn,
+    .btn-sm {
+        padding: 0.1875rem 0.375rem;
+        font-size: 0.8125rem;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .nav-tabs .nav-link.active {
+        background-color: #0d6efd;
+        border-color: #0d6efd #0d6efd #fff;
+        color: white;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #0d6efd;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-color: #0d6efd #0d6efd #0d6efd;
+        color: #0d6efd;
+    }
+    
+    @media (max-width: 768px) {
+        #ton_kho_table th,
+        #ton_kho_table td {
+            padding: 4px 6px;
+            font-size: 0.8rem;
+        }
+        
+        .input-group-sm .form-control {
+            font-size: 0.8rem;
+        }
+    }
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %}

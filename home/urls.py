@@ -16,7 +16,6 @@ urlpatterns = [
     path('xuat-mon/delete-all/', views.delete_all_xuat_mon, name='delete_all_xuat_mon'),
     path('tong-hop/delete/<int:id>/', views.delete_tong_hop, name='delete_tong_hop'),
     path('tong-hop/delete-all/', views.delete_all_tong_hop, name='delete_all_tong_hop'),
-    path('quan-ly-hang-hoa/', views.quan_ly_hang_hoa, name='quan_ly_hang_hoa'),
     path('delete-all-nhap-hang/', views.delete_all_nhap_hang, name='delete_all_nhap_hang'),
     path('hang-hoa/edit/<int:id>/', views.edit_hang_hoa, name='edit_hang_hoa'),
     path('hang-hoa/delete/<int:id>/', views.delete_hang_hoa, name='delete_hang_hoa'),
@@ -28,4 +27,9 @@ urlpatterns = [
     path('ton-kho-le-tan/delete-all/', views.delete_all_ton_kho_le_tan, name='delete_all_ton_kho_le_tan'),
     path('delete-ton-kho-by-date-range/', views.delete_ton_kho_by_date_range, name='delete_ton_kho_by_date_range'),
     # Các URL khác
+    # THÊM 2 DÒNG NÀY
+    path('api/get-ton-kho-data/', views.get_ton_kho_data, name='get_ton_kho_data'),
+    path('api/get-hang-hoa-list/', views.get_hang_hoa_list, name='get_hang_hoa_list'),
+    path('api/get-hang-hoa-detail/<int:id>/', views.get_hang_hoa_detail, name='get_hang_hoa_detail'),
+    path('api/get-ton-kho-le-tan-data/', views.get_ton_kho_le_tan_data, name='get_ton_kho_le_tan_data'),
 ]
