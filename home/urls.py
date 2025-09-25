@@ -27,7 +27,6 @@ urlpatterns = [
     path('ton-kho-le-tan/delete-all/', views.delete_all_ton_kho_le_tan, name='delete_all_ton_kho_le_tan'),
     path('delete-ton-kho-by-date-range/', views.delete_ton_kho_by_date_range, name='delete_ton_kho_by_date_range'),
     # Các URL khác
-    # THÊM 2 DÒNG NÀY
     path('api/get-ton-kho-data/', views.get_ton_kho_data, name='get_ton_kho_data'),
     path('api/get-hang-hoa-list/', views.get_hang_hoa_list, name='get_hang_hoa_list'),
     path('api/get-hang-hoa-detail/<int:id>/', views.get_hang_hoa_detail, name='get_hang_hoa_detail'),
